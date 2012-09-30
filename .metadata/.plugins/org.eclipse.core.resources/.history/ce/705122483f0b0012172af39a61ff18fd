@@ -1,0 +1,1120 @@
+
+import ij.IJ;
+import ij.ImageListener;
+import ij.ImagePlus;
+import ij.WindowManager;
+import ij.gui.GUI;
+import ij.gui.ImageWindow;
+import ij.gui.Toolbar;
+import ij.plugin.Duplicator;
+import ij.plugin.ImageCalculator;
+import ij.plugin.frame.PlugInFrame;
+import ij.process.ImageProcessor;
+
+import java.awt.GridLayout;
+import java.awt.Point;
+import java.awt.Polygon;
+import java.io.IOException;
+
+import javax.swing.BorderFactory;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.SwingConstants;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+import output.writeCSVDoc;
+
+import main.ImageJResultsTable;
+import main.imageMetaData;
+import main.imageProcessing;
+import threshold.ThresholdAdjust;
+import clahe.FastFlat;
+import color.ColorPicker;
+import color.GreenAndRedProcessing;
+import color.OtherOptions;
+
+@SuppressWarnings("deprecation")
+
+/**
+ * Main class for the image tools, handles all the creation of buttons and windows.
+ * @author Andrew Bird and Zheng XiaoLong
+ *
+ */
+
+public class macroalgaeTool_ extends PlugInFrame {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -147234834802445512L;
+	private static int significantDigits = 3;
+	private static double sig_mult = (int)Math.pow(10, significantDigits);
+	//
+	
+	
+	private JPanel mainPanel, PreprocessingPanel, ProcessingPanel, OutputPanel, RefinementPanel;
+//
+	ImageIcon fileButtonIcon = createImageIcon("images/fileopen.png");  //  @jve:decl-index=0:
+    //ImageIcon middleButtonIcon = createImageIcon("images/fileopen.png");
+    //ImageIcon rightButtonIcon = createImageIcon("images/fileopen.png");
+      
+   //setup the buttons and panels
+	private JPanel processingContentPanel = null;
+	private JPanel outputPanel = null;
+	private JPanel preProcessingContentPanel = null;
+	private JPanel refinementPanel = null;
+	private JPanel panel3 = null;
+	
+	private JButton jButtonCleanOutside = null;
+	private JButton jButtonRGBMeasure = null;
+	private JButton jButtonUpdateResults = null;
+	private JButton jButtonSaveResults = null;
+	private JButton jButtonPercentCoverage = null;
+	private JButton jButtonSplitChannels = null;
+	private JButton jButtonCloseImages = null;
+	//private JButton jButtonResetImage = null;
+	private JButton jButtonImageMetaData = null;
+	private JButton jButtonCLAHE = null;
+
+	//private JButton jButtonHeloSkid = null;
+	private JButton jButtonHorizonLine =null;
+	private JButton jButtonSelectLine = null;
+	private JButton jButtonSelectPoly = null;
+	//private JButton jButtoncolorPanel = null;
+	private JButton jButtonGreenRedColorImage= null;
+	private JButton jButtonEqualizeImage = null;
+	private JButton jButtonColorPicker= null;
+	private JButton jButtonColorPicker2= null;
+	private JButton jButtonBinaryClose = null;
+	private JButton jButtonParseImageMetaData =null;
+	private JButton jButtonCaptureMaxArea =null;
+	private JButton jButtonShowRedGreenImage =null;
+	private JButton jButtonUserColorThreshold =null;
+	private JButton jButtonotheroptions =null;
+	private JButton jButtonShoreLine = null;
+	private JButton jButtonSelectPoint = null;
+	
+	ImagePlus imp = new ImagePlus();  //
+    ImageProcessor ip;
+	private imageMetaData imageProperties = new imageMetaData();
+	private ImageJResultsTable results;
+	private ThresholdAdjust ThreshHolderGUI;
+	ColorPicker cp = new ColorPicker();
+	protected OtherOptions op;
+
+	/**
+	 * Default constructor
+	 */
+	public macroalgaeTool_() {
+		super("name");
+		initialize();
+	}
+
+	/**
+	 * This method initializes this function
+	 * 
+	 * @return void
+	 */
+	private void initialize() {	
+		imp = IJ.getImage();
+		ip = imp.getProcessor();
+		//imageProperties.createImageInformationDialogBox();
+		
+		this.setSize(100, 100);
+		// Main panel that holds all controls
+		mainPanel = new JPanel();
+		mainPanel.setLayout(new GridLayout(0,3));
+		mainPanel.setBorder(BorderFactory.createEmptyBorder(5,5,5,5));
+		this.add(mainPanel);
+	    
+		
+		// Screen areas
+		this.PreprocessingPanel = this.addPanel(mainPanel,"Preprocessing",0,0);
+		this.ProcessingPanel = this.addPanel(mainPanel,"Processing",0,0);
+		this.panel3 = new JPanel();
+		this.panel3.setLayout(new GridLayout(2,0));
+		mainPanel.add(panel3);
+		this.RefinementPanel = this.addPanel(panel3, "Refinement",0,0);
+		this.OutputPanel = this.addPanel(panel3, "Output",0,0);
+		
+		//setup the panels and add the content
+		ProcessingPanel.add(getContentForProcessingPanel());
+		PreprocessingPanel.add(getContentForPreProcessingPanel());
+		OutputPanel.add(getContentForOutputPanel());
+		RefinementPanel.add(getContentForRefinementPanel());
+		
+		//show the panel and modify the title
+		this.setTitle("Image Processing Tool Box");
+		this.setVisible(true);
+		this.pack();
+		//Causes this Window to be sized to fit the preferred size and layouts of its subcomponents.
+		GUI.center(this);
+		show();
+		
+		setTheLineColor();
+	}
+
+
+	/**
+	 * 
+	 */
+	private void setTheLineColor() {
+		IJ.run("Point Tool...", "mark=0 label selection=blue");
+	}
+
+	/**
+	 * Adds a new panel the main container panel and sets default decoration
+	 */
+	private JPanel addPanel(JPanel panel, String title, int x, int y)
+	{
+		JPanel tempPanel = new JPanel();
+
+		// Set GridLayout is we have relevant values to use on
+		if ( (x > 0) || (y > 0) )
+		{ tempPanel.setLayout(new GridLayout(x,y)); }
+
+		// Set the panel decoration
+		tempPanel.setBorder(BorderFactory.createCompoundBorder(
+				BorderFactory.createTitledBorder(title), BorderFactory.createEmptyBorder(5,5,5,5)));
+
+		// Add this panel to the main one
+		panel.add(tempPanel);
+
+		return tempPanel;
+	}
+	
+    /** Returns an ImageIcon, or null if the path was invalid. */
+    protected static ImageIcon createImageIcon(String path) {
+        java.net.URL imgURL = macroalgaeTool_.class.getResource(path);
+        if (imgURL != null) {
+            return new ImageIcon(imgURL);
+        } else {
+            //System.err.println("Couldn't find file: " + path); remove so now its based in image J
+            IJ.error("Couldn't find file: " + path);
+            return null;
+        }
+    }
+   
+	/**
+	 * This method returns the content for the output panel, in the form of a complete panel with buttons
+	 * 
+	 * @return javax.swing.JPanel
+	 */
+    private JPanel getContentForOutputPanel() {
+		if (outputPanel == null) {
+			GridLayout gridLayout = new GridLayout(4,1);
+			outputPanel = new JPanel();
+			outputPanel.setLayout(gridLayout);		
+			outputPanel.add(getjButtonUpdateResults(),null);			
+			outputPanel.add(getjButtonSaveResults(),null);
+			outputPanel.add(getJButtonCloseAllImages(),null);	
+			//outputPanel.add(getJButtonColorPicker(),null);
+			//outputPanel.add(getJButtonColorPicker2(),null);
+			//version Number	
+			setVersionNumberForTool();
+	
+		}
+		return outputPanel;
+	}
+
+    
+    private JPanel getContentForRefinementPanel()
+    {
+    	if (refinementPanel == null) {
+			GridLayout gridLayout = new GridLayout(2,2);
+			gridLayout.setRows(3);
+			gridLayout.setColumns(1);
+			refinementPanel = new JPanel();
+			refinementPanel.setLayout(gridLayout);
+    		refinementPanel.add(getjButtonRecapturePolygon(), null);
+    		refinementPanel.add(getJButtonEqualizeImage(),null);	
+    		refinementPanel.add(getjButtonViewEditImageMetaData(),null);
+    	}
+    	return refinementPanel;
+    }
+	/**
+	 * Sets the version number of the tool
+	 */
+	private void setVersionNumberForTool() {
+		JLabel label = new JLabel("Version 2.0");
+		outputPanel.add(label, null);
+	}
+    
+
+	/**
+	 * This method returns the content for the processing panels, in the form of a complete panel with buttons
+	 * 
+	 * @return javax.swing.JPanel
+	 */
+	private JPanel getContentForProcessingPanel() {
+		if (processingContentPanel == null) {
+			GridLayout gridLayout = new GridLayout(2,2);
+			gridLayout.setRows(7);
+			gridLayout.setColumns(1);
+			processingContentPanel = new JPanel();
+			processingContentPanel.setLayout(gridLayout);
+			
+			processingContentPanel.add(getJButtonCLAHE(),null);	
+			processingContentPanel.add(getAlgaePercentCoverage(), null);
+			processingContentPanel.add(getJButtonApplyMaskToOrigIm(),null);	
+			processingContentPanel.add(getjButtonShowRedGreenPixelsColorImage(),null);	
+			processingContentPanel.add(getJButtonOtherOptions(),null);
+			processingContentPanel.add(getJButtonUserColorThreshold(),null);
+			processingContentPanel.add(getjButtonShowGreenRedImage(),null);	
+		}
+		return processingContentPanel;
+	}
+	
+	private JButton getjButtonShowGreenRedImage() {
+		if (jButtonShowRedGreenImage == null) {
+			jButtonShowRedGreenImage = new JButton();
+			jButtonShowRedGreenImage.setText("Show and Save Composite Image");
+			jButtonShowRedGreenImage.setIcon(fileButtonIcon);
+			jButtonShowRedGreenImage.setHorizontalAlignment(SwingConstants.LEFT);
+			jButtonShowRedGreenImage.addMouseListener(new java.awt.event.MouseAdapter() {			
+
+				private boolean useOther;
+
+				//processing event
+				@Override
+				public void mouseClicked(java.awt.event.MouseEvent e) {
+					int[] imageIdList = WindowManager.getIDList();
+					boolean useRed = false;
+					boolean useGreen = false;
+					boolean BWMask = false;
+					boolean useOther = false;
+					String blue = "*None*";
+					
+					if (imageIdList.length>1){	
+						for (int i = 0; i < imageIdList.length; i++) {
+							String name = WindowManager.getImage(imageIdList[i]).getTitle();
+							if (name.contentEquals("Red Result")){
+								IJ.log("Red Result Image Present...");
+							    useRed = true;	    	
+							}
+							else if(name.contentEquals("Green Result")){
+								IJ.log("Green Result Image Present...");
+							    useGreen = true;	    						    
+							}
+							else if(name.contentEquals("Other Result")){
+								blue ="[Other Result]";
+								useOther = true;
+								IJ.log("Other Result Image Present...");
+							}
+						}
+						if ((useRed == true) && (useGreen == true))
+						{			
+							IJ.run(imp, "Merge Channels...", "red=[Red Result] green=[Green Result] blue="+blue+" gray=*None*");	
+							IJ.log("Picture created");
+							IJ.log("Using Red and Green");
+							String resultImage =imageProperties.getCurrentFileName().concat("_result");
+							IJ.saveAs(WindowManager.getCurrentImage(), "Jpeg", imageProperties.getCurrentFileDirectory()+resultImage);
+							IJ.log("Result Image Saved to:"+imageProperties.getCurrentFileDirectory()+resultImage);
+									
+						}
+						else
+						{
+							IJ.log("Incorrect Images Present");
+						}			
+					}else{
+						IJ.log("Incorrect number of Images Present");
+					}			
+				}
+			});
+		}
+		return jButtonShowRedGreenImage;	
+	}
+
+	private JPanel getContentForPreProcessingPanel() {
+		if (preProcessingContentPanel == null) {
+			GridLayout gridLayout = new GridLayout(2,2);
+			gridLayout.setRows(9);
+			gridLayout.setColumns(1);
+			preProcessingContentPanel = new JPanel();
+			preProcessingContentPanel.setLayout(gridLayout);
+			preProcessingContentPanel.add(getjButtonParseImageMetaData(),null);
+			preProcessingContentPanel.add(getJButtonSelectLineTool(), null);
+			preProcessingContentPanel.add(getJButtonHorizonLine(), null);
+			preProcessingContentPanel.add(getJButtonSelectPointTool(), null);
+			preProcessingContentPanel.add(getDistance(), null);
+			//preProcessingContentPanel.add(getJButtonHeloSkid(), null);	
+			preProcessingContentPanel.add(getJButtonSelectPolyTool(), null);
+			preProcessingContentPanel.add(getJButtonClearOutsideSelectedAreaAndCrop(), null);	
+			preProcessingContentPanel.add(getJButtonCaptureMaxArea(), null);
+			preProcessingContentPanel.add(getJButtonSplittingChannels(),null);
+			//preProcessingContentPanel.add(getJButtonColorPicker(),null);			
+		}
+		return preProcessingContentPanel;
+	}
+
+	private class DistanceImageUpdateListener implements ImageListener{
+
+		@Override
+		public void imageClosed(ImagePlus arg0) {
+		}
+
+		@Override
+		public void imageOpened(ImagePlus arg0) {
+		}
+
+		@Override
+		public void imageUpdated(ImagePlus imp) {
+			int x = imp.getRoi().getPolygon().xpoints[0];
+			int y = imp.getRoi().getPolygon().ypoints[0];
+			imageProperties.calculateShoreLineDistance(x, y);
+			IJ.log("Distance to Selected Point: "+(int)(imageProperties.getDistanceToPoint()*sig_mult)/sig_mult+" meters");
+			ImagePlus.removeImageListener(this);
+		}
+		
+	
+	}
+	
+	private JButton getJButtonSelectPointTool(){
+		if (jButtonSelectPoint == null)
+		{
+			jButtonSelectPoint = new JButton();
+			jButtonSelectPoint.setText("Select Point Tool");
+			jButtonSelectPoint.setHorizontalAlignment(SwingConstants.LEFT);
+			jButtonSelectPoint.addMouseListener(new java.awt.event.MouseAdapter(){	
+				public void mouseClicked(java.awt.event.MouseEvent e) {		
+					IJ.setTool(Toolbar.POINT);
+				}
+			});
+		}
+		return jButtonSelectPoint;
+		
+	}
+	
+	
+	private JButton getDistance() {
+		if (jButtonShoreLine == null)
+		{
+			jButtonShoreLine = new JButton();
+			jButtonShoreLine.setText("Get Distance");
+			jButtonShoreLine.setHorizontalAlignment(SwingConstants.LEFT);
+			jButtonShoreLine.addMouseListener(new java.awt.event.MouseAdapter() {		
+				//processing event
+				@Override
+				public void mouseClicked(java.awt.event.MouseEvent e) {		
+					imp = IJ.getImage();
+					int x = imp.getRoi().getPolygon().xpoints[0];
+					int y = imp.getRoi().getPolygon().ypoints[0];
+					imageProperties.calculateShoreLineDistance(x, y);
+					IJ.log("Distance to Selected Point: "+(int)(imageProperties.getDistanceToPoint()*sig_mult)/sig_mult+" meters");
+					ImagePlus.removeImageListener(this);
+				}
+			});
+		}
+		return jButtonShoreLine;
+	}
+
+	private JButton getJButtonHorizonLine() {
+		if (jButtonHorizonLine == null) {
+			jButtonHorizonLine = new JButton();
+			jButtonHorizonLine.setText("Capture/Rotate Horizon Line");
+			jButtonHorizonLine.setIcon(fileButtonIcon);
+			jButtonHorizonLine.setHorizontalAlignment(SwingConstants.LEFT);
+			jButtonHorizonLine.addMouseListener(new java.awt.event.MouseAdapter() {			
+				//processing event
+				@Override
+				public void mouseClicked(java.awt.event.MouseEvent e) {		
+					imageProperties.setHorizonLineROI();
+					//Crop bottom part of image out
+					//Calculate Horizon Line rotate amount and pitch
+					int x1 = imageProperties.getHorizonLineXPoints()[0];
+					int x2 = imageProperties.getHorizonLineXPoints()[1];
+					int y1 = imageProperties.getHorizonLineYPoints()[0];
+					int y2 = imageProperties.getHorizonLineYPoints()[1];
+					double x_center = imageProperties.getImageWidth()/2.0;
+					double y_center = imageProperties.getImageHeight()/2.0;
+					double angle = Math.atan((double)(y1-y2)/(double)(x2-x1));
+					IJ.run("Select All");
+					IJ.run("Rotate... ", "angle="+Double.toString(angle*180.0/Math.PI)+" grid=0 interpolation=None enlarge");//rotate around center and we're good
+					IJ.run("Select None");
+					WindowManager.getCurrentWindow().maximize();
+					//Angle is originally defined is positive going counter clockwise, we want to then rotate the point clockwise to adjust
+					//Using clockwise rotation function with coordinates centered at image center
+					//Note: 0 is at the top of the image, not the bottom
+					ImagePlus rotate_imp = WindowManager.getCurrentImage();
+					int new_width = rotate_imp.getWidth();
+					int new_height = rotate_imp.getHeight();
+					double new_y = new_height/2-(-Math.sin(angle)*(x1-x_center) + Math.cos(angle)*(y_center-y1));
+					double yratio = (double)new_height/(double)imageProperties.getImageHeight();
+					double xratio = (double)new_width/(double)imageProperties.getImageWidth();
+					imageProperties.setFOVY(yratio*imageProperties.getFOVY());
+					imageProperties.setFOVX(xratio*imageProperties.getFOVX());
+					double pitch = (new_height/2-new_y)/new_height*imageProperties.getFOVY();
+					//Yes yes it's no longer the origImageWidth, bad variable name, whatever, call it original before crop
+					imageProperties.setImageWidth(new_width);
+					imageProperties.setImageHeight(new_height);
+					imageProperties.setPitch(pitch);
+					IJ.log("Camera Pitch: " + (Double.toString((int)(pitch*sig_mult)/sig_mult))+" degrees");
+					imageProperties.calculateGamma();
+				}
+			});
+		}
+		return jButtonHorizonLine;
+	}
+
+	private JButton getJButtonCaptureMaxArea() {
+		if (jButtonCaptureMaxArea == null) {
+			jButtonCaptureMaxArea = new JButton();
+			jButtonCaptureMaxArea.setText("Capture ROI");
+			jButtonCaptureMaxArea.setIcon(fileButtonIcon);
+			jButtonCaptureMaxArea.setHorizontalAlignment(SwingConstants.LEFT);
+			jButtonCaptureMaxArea.addMouseListener(new java.awt.event.MouseAdapter() {			
+
+				//processing event
+				@Override
+				public void mouseClicked(java.awt.event.MouseEvent e) {
+					//imageProperties.setPixelCountCC();
+					imageProperties.setMaxAreaPolygon();
+					imageProperties.calculateArea();
+					IJ.log("MAX AREA: "+Double.toString((int)(imageProperties.getArea()*sig_mult)/sig_mult)+" meters squared");
+				}
+			});
+		}
+		return jButtonCaptureMaxArea;
+	}
+	
+	private JButton getJButtonOtherOptions() {
+		if (jButtonotheroptions == null) {
+			jButtonotheroptions = new JButton();
+			jButtonotheroptions.setText("other options");
+			jButtonotheroptions.setIcon(fileButtonIcon);
+			jButtonotheroptions.setHorizontalAlignment(SwingConstants.LEFT);
+			jButtonotheroptions.addMouseListener(new java.awt.event.MouseAdapter() {			
+
+				//processing event
+				@Override
+				public void mouseClicked(java.awt.event.MouseEvent e) {
+				    
+					op = new OtherOptions(imageProperties.getCurrentFileName());
+					op.createOtherOptionsGUI();
+					
+				}
+			});
+		}
+		return jButtonotheroptions;
+	}
+	
+	
+		/*
+	private JButton getJButtonHeloSkid() {
+		if (jButtonHeloSkid == null) {
+			jButtonHeloSkid = new JButton();
+			jButtonHeloSkid.setText("Capture Helo Skid Line");
+			jButtonHeloSkid.setIcon(fileButtonIcon);
+			jButtonHeloSkid.setHorizontalAlignment(SwingConstants.LEFT);
+			jButtonHeloSkid.addMouseListener(new java.awt.event.MouseAdapter() {			
+
+				//processing event
+				@Override
+				public void mouseClicked(java.awt.event.MouseEvent e) {		
+					imageProperties.setHeloLineROI();
+					imageProperties.setImageHeight(WindowManager.getCurrentImage().getHeight());
+					imageProperties.setImageWidth(WindowManager.getCurrentImage().getWidth());
+				}
+			});
+		}
+		return jButtonHeloSkid;
+	}
+	*/
+	private JButton getJButtonCloseAllImages() {
+		if (jButtonCloseImages == null) {
+			jButtonCloseImages = new JButton();
+			jButtonCloseImages.setText("Close Open Images");
+			jButtonCloseImages.setIcon(fileButtonIcon);
+			jButtonCloseImages.setHorizontalAlignment(SwingConstants.LEFT);
+			jButtonCloseImages.addMouseListener(new java.awt.event.MouseAdapter() {			
+
+				//processing event
+				@Override
+				public void mouseClicked(java.awt.event.MouseEvent e) {		
+					int[] imageIdList = WindowManager.getIDList();
+					
+					if (imageIdList.length>1){	
+						for (int i = 0; i < imageIdList.length; i++) {
+							String name = WindowManager.getImage(imageIdList[i]).getTitle();
+							if (name.contentEquals("Results")){
+								IJ.log("Result Table Identified...");
+							}
+							else{
+								WindowManager.getImage(imageIdList[i]).close();
+							}
+						}
+						}
+					
+					IJ.log("Cleared stored Data Values");
+					imageProperties = null;
+					imageProperties = new imageMetaData();
+				}
+			});
+		}
+		return jButtonCloseImages;
+	}
+
+	private JButton getJButtonSplittingChannels() {
+		if (jButtonSplitChannels == null) {
+			jButtonSplitChannels = new JButton();
+			jButtonSplitChannels.setText("Split RGB Channels");
+			jButtonSplitChannels.setIcon(fileButtonIcon);
+			jButtonSplitChannels.setHorizontalAlignment(SwingConstants.LEFT);
+			jButtonSplitChannels.addMouseListener(new java.awt.event.MouseAdapter() {			
+				//processing event
+				@Override
+				public void mouseClicked(java.awt.event.MouseEvent e) {
+					imp = WindowManager.getCurrentImage();
+					//Split the RGB image too the 3 channels		 
+					imageProcessing.createRGBSplit(imp);	
+						
+				}
+			});
+		}
+		return jButtonSplitChannels;
+	}
+
+	/**
+	 *  This method returns the % coverage of algae in an area
+	 * @return
+	 */
+	private JButton getAlgaePercentCoverage() {
+		if (jButtonPercentCoverage == null) {
+			jButtonPercentCoverage = new JButton();
+			jButtonPercentCoverage.setText("Show Algae % Coverage");
+			jButtonPercentCoverage.setIcon(fileButtonIcon);
+			jButtonPercentCoverage.setHorizontalAlignment(SwingConstants.LEFT);
+			jButtonPercentCoverage.addMouseListener(new java.awt.event.MouseAdapter() {			
+				//processing event
+				@Override
+				public void mouseClicked(java.awt.event.MouseEvent e) {
+					
+					imageProperties.getSavedAndDisplayPolygonROI();	
+					
+					imageProperties.createPercentCovers();
+					
+					IJ.log("Max Area: "+(int)(imageProperties.getArea()*sig_mult)/sig_mult+" meters squared\n"
+						+ "Refined Area: "+(int)(imageProperties.getRefinedArea()*sig_mult)/sig_mult+" meters squared\n"		
+					    + "% cover of black Big: "+ Double.toString((int)(imageProperties.getiPercentCoverBlack()*sig_mult)/sig_mult) + "\n"
+					    + "% cover of black Small: "+ Double.toString((int)(imageProperties.getiPercentCoverBlackSmall()*sig_mult)/sig_mult) + "\n"
+						);
+					
+				}
+			});
+		}
+		return jButtonPercentCoverage;
+	}
+
+	/**
+	 * This method initializes jButtonSaveAs	
+	 * 	
+	 * @return javax.swing.JButton	
+	 */
+	private JButton getjButtonUpdateResults() {
+		if (jButtonUpdateResults == null) {
+			jButtonUpdateResults = new JButton();
+			jButtonUpdateResults.setText("Update Results...");
+			jButtonUpdateResults.setIcon(fileButtonIcon);
+			jButtonUpdateResults.setHorizontalAlignment(SwingConstants.LEFT);
+			jButtonUpdateResults.addMouseListener(new java.awt.event.MouseAdapter() {
+
+				@Override
+				public void mouseClicked(java.awt.event.MouseEvent e) {		
+
+					//if ((imageProperties.getHeloLineNumberOfPoints() > 0)){
+						if (imageProperties.getPolygonNumberOfPoints() > 0){
+						
+						IJ.freeMemory();
+						IJ.run("Set Measurements...", "Lat Lon display redirect=None decimal=7");
+						results = new ImageJResultsTable(imageProperties,op);
+						results.createResultsTable();
+						}
+					//}
+					else
+					{
+					IJ.log("Please set Polygon");	
+					}
+						
+					
+				}
+			});
+		}
+		return jButtonUpdateResults;
+	}
+	
+	/**
+	 * This method initializes jButtonSaveAs	
+	 * 	
+	 * @return javax.swing.JButton	
+	 */
+	private JButton getjButtonSaveResults() {
+		if (jButtonSaveResults == null) {
+			jButtonSaveResults = new JButton();
+			jButtonSaveResults.setText("Save Results...");
+			jButtonSaveResults.setIcon(fileButtonIcon);
+			jButtonSaveResults.setHorizontalAlignment(SwingConstants.LEFT);
+			jButtonSaveResults.addMouseListener(new java.awt.event.MouseAdapter() {
+				@Override
+				public void mouseClicked(java.awt.event.MouseEvent e) {				
+					//IJ.showMessage("Saving...", "Saving results to Excel press ok to continue");
+					IJ.log("Saving CSV Data...");	
+						try 
+						{
+							writeCSVDoc.writeDoc();
+							IJ.log("Done!");
+						} 
+						catch (IOException e1) 
+						{
+							e1.printStackTrace();
+							IJ.log("ERROR:");						
+						}
+				}
+			});
+		}
+		return jButtonSaveResults;
+	}
+	
+	
+	
+	/**
+	 * This method initializes jButtonImageMetaData
+	 * PARSER for meta data
+	 * 	
+	 * @return javax.swing.JButton	
+	 */
+	private JButton getjButtonParseImageMetaData() {
+		if (jButtonParseImageMetaData == null) {
+			jButtonParseImageMetaData = new JButton();
+			jButtonParseImageMetaData.setText("Process Image Information");
+			jButtonParseImageMetaData.setIcon(fileButtonIcon);
+			jButtonParseImageMetaData.setHorizontalAlignment(SwingConstants.LEFT);
+			jButtonParseImageMetaData.addMouseListener(new java.awt.event.MouseAdapter() {
+				@Override
+				public void mouseClicked(java.awt.event.MouseEvent e) {	
+					imp = WindowManager.getCurrentImage();
+					int current_height = imp.getHeight();
+					imageProperties.setImageWidth(imp.getWidth());
+					imageProperties.createImageInformationDialogBox();	
+					imageProperties.setMinCropCoords(new Point(0,0));
+					int i = current_height-1;
+					while (i >= 0)
+					{
+						int[] colors = imp.getPixel(0,i);
+						if (colors[0] >= 250 && colors[1] >= 250 && colors[2] >= 250)
+							i--;
+						else
+							break;
+					}
+					int meta_height = current_height-1-i;
+					int new_height = current_height-meta_height;
+					imp.show();
+					IJ.makeRectangle(0,0,imageProperties.getImageWidth(), new_height);
+					IJ.run("Crop");
+					imageProperties.setImageHeight(new_height);
+				}
+			});
+		}
+		return jButtonParseImageMetaData;
+	}
+	
+	
+	/**
+	 * This method initializes jButtonImageMetaData
+	 * It displays the currently entered image meta data and allows the user to change it
+	 * 	
+	 * @return javax.swing.JButton	
+	 */
+	private JButton getjButtonViewEditImageMetaData() {
+		if (jButtonImageMetaData == null) {
+			jButtonImageMetaData = new JButton();
+			jButtonImageMetaData.setText("View/Edit MetaData");
+			jButtonImageMetaData.setIcon(fileButtonIcon);
+			jButtonImageMetaData.setHorizontalAlignment(SwingConstants.LEFT);
+			jButtonImageMetaData.addMouseListener(new java.awt.event.MouseAdapter() {
+				@Override
+				public void mouseClicked(java.awt.event.MouseEvent e) {	
+					imageProperties.editImageMetaData();				
+				}
+			});
+		}
+		return jButtonImageMetaData;
+	}
+	
+	private JButton getjButtonShowRedGreenPixelsColorImage() {
+		if (jButtonGreenRedColorImage == null) {
+			jButtonGreenRedColorImage = new JButton();
+			jButtonGreenRedColorImage.setText("Calculate red and Green in Image");
+			jButtonGreenRedColorImage.setIcon(fileButtonIcon);
+			jButtonGreenRedColorImage.setHorizontalAlignment(SwingConstants.LEFT);
+			jButtonGreenRedColorImage.addMouseListener(new java.awt.event.MouseAdapter() {
+				@Override
+				public void mouseClicked(java.awt.event.MouseEvent e) {	
+					GreenAndRedProcessing.showGreenAndRedPixels(imageProperties);
+				}
+			});
+		}
+		return jButtonGreenRedColorImage;
+	} 
+	
+
+	/**
+	 * This method initializes jButtonFileInfo	
+	 * 	
+	 * @return javax.swing.JButton	
+	 */
+	private JButton getjButtonRecapturePolygon() {
+		if (jButtonRGBMeasure == null) 
+		{
+			jButtonRGBMeasure = new JButton();
+			jButtonRGBMeasure.setText("Recapture Polygon Area");
+			jButtonRGBMeasure.setIcon(fileButtonIcon);
+			jButtonRGBMeasure.setHorizontalAlignment(SwingConstants.LEFT);
+			jButtonRGBMeasure.addMouseListener(new java.awt.event.MouseAdapter() 
+			{
+				@Override
+				public void mouseClicked(java.awt.event.MouseEvent e) {					
+					imageProperties.getSavedAndDisplayPolygonROI();	
+				}
+			});
+		}
+		return jButtonRGBMeasure;
+	}
+
+	/**
+	 * This method initializes jButtonSelect	
+	 * 	
+	 * @return javax.swing.JButton	
+	 */
+	private JButton getJButtonSelectPolyTool() {
+		if (jButtonSelectPoly == null) {
+			jButtonSelectPoly = new JButton();
+			jButtonSelectPoly.setText("Select Polygon Tool");
+			jButtonSelectPoly.setIcon(fileButtonIcon);
+			jButtonSelectPoly.setHorizontalAlignment(SwingConstants.LEFT);
+			jButtonSelectPoly.addMouseListener(new java.awt.event.MouseAdapter() {
+				@Override
+				public void mouseClicked(java.awt.event.MouseEvent e) {
+					//System.out.println("mouseClicked()");
+					IJ.setTool(Toolbar.POLYGON);
+					
+				}
+			});
+		}
+		return jButtonSelectPoly;
+	}
+
+	/**
+	 * This method initializes jButtonSelect	
+	 * 	
+	 * @return javax.swing.JButton	
+	 */
+	
+	private JButton getJButtonSelectLineTool() {
+			jButtonSelectLine = new JButton();
+			jButtonSelectLine.setText("Select Line Tool");
+			jButtonSelectLine.setIcon(fileButtonIcon);
+			jButtonSelectLine.setHorizontalAlignment(SwingConstants.LEFT);
+			jButtonSelectLine.addMouseListener(new java.awt.event.MouseAdapter() {
+				@Override
+				public void mouseClicked(java.awt.event.MouseEvent e) {
+					//System.out.println("mouseClicked()");
+					IJ.setTool(Toolbar.LINE);
+				}
+			});
+		return jButtonSelectLine;
+	}
+	
+	/**
+	 *This method initializes jButtonEqalizeImage	
+	 * @return
+	 */
+	public JButton getJButtonEqualizeImage() {
+		if (jButtonEqualizeImage == null) {
+			jButtonEqualizeImage = new JButton();
+			jButtonEqualizeImage.setText("Equalize Image");
+			jButtonEqualizeImage.setIcon(fileButtonIcon);
+			jButtonEqualizeImage.setHorizontalAlignment(SwingConstants.LEFT);
+			
+			jButtonEqualizeImage.addMouseListener(new java.awt.event.MouseAdapter() {
+				@Override
+				public void mouseClicked(java.awt.event.MouseEvent e) {
+					imp = IJ.getImage();
+					IJ.run(imp, "Enhance Contrast", "saturated=0.4 equalize");
+				}
+			});
+		}
+			return jButtonEqualizeImage;
+		
+	}
+	
+	/**
+	 *This method initializes jButtonColorPicker	
+	 * @return
+	 */
+	public JButton getJButtonColorPicker() {
+		if (jButtonColorPicker == null) {
+			jButtonColorPicker = new JButton();
+			jButtonColorPicker.setText("Select Algae Color Boundaries");
+			jButtonColorPicker.setIcon(fileButtonIcon);
+			jButtonColorPicker.setHorizontalAlignment(SwingConstants.LEFT);
+			jButtonColorPicker.addMouseListener(new java.awt.event.MouseAdapter() {
+			
+		    int click = 0;
+		    
+		    
+				@Override
+				public void mouseClicked(java.awt.event.MouseEvent e) {
+					cp.setupAlgaeColorPicker(click);
+					click = click+1;
+				}
+			});
+		}
+			return jButtonColorPicker;
+		
+	}
+		
+	/**
+	 *This method initializes jButtonColorPicker	
+	 * @return
+	 */
+	public JButton getJButtonColorPicker2() {
+		if (jButtonColorPicker2 == null) {
+			jButtonColorPicker2 = new JButton();
+			jButtonColorPicker2.setText("Select Non Algae Color Boundaries");
+			jButtonColorPicker2.setIcon(fileButtonIcon);
+			jButtonColorPicker2.setHorizontalAlignment(SwingConstants.LEFT);
+			jButtonColorPicker2.addMouseListener(new java.awt.event.MouseAdapter() {
+			
+		    int click = 0;
+				@Override
+				public void mouseClicked(java.awt.event.MouseEvent e) {
+					cp.setupNonAlgaeColorPicker(click);
+					click = click+1;
+				}
+			});
+		}
+			return jButtonColorPicker2;
+		
+	}
+	
+	public JButton getJButtonApplyMaskToOrigIm() {
+		if (jButtonBinaryClose == null) {
+			jButtonBinaryClose = new JButton();
+			jButtonBinaryClose.setText("Apply Mask");
+			jButtonBinaryClose.setIcon(fileButtonIcon);
+			jButtonBinaryClose.setHorizontalAlignment(SwingConstants.LEFT);
+			jButtonBinaryClose.addMouseListener(new java.awt.event.MouseAdapter() {
+			
+				@Override
+				public void mouseClicked(java.awt.event.MouseEvent e) {					
+					//ImagePlus mask = WindowManager.getImage("RGB IMAGE (red)");
+					ImagePlus mask = WindowManager.getCurrentImage();
+					mask.setTitle("Mask");
+					mask.show();
+					IJ.run(mask, "Divide...", "value=255");
+					
+					
+					
+					ImagePlus RGBImage = new Duplicator().run(WindowManager.getImage("Original RGB Image"));	
+					//RGBImage.show();
+					RGBImage.setTitle("RGB Image2");
+					
+					IJ.run(RGBImage, "Split Channels", "");
+							
+					//get red bwRed
+					ImagePlus red = WindowManager.getImage("RGB Image2 (red)");
+					red.updateAndRepaintWindow();
+					
+					ImagePlus green = WindowManager.getImage("RGB Image2 (green)");
+					green.updateAndRepaintWindow();
+					
+					ImagePlus blue = WindowManager.getImage("RGB Image2 (blue)");
+					blue.updateAndRepaintWindow();
+					
+					if ((red!=null) && (green!=null) && (blue!=null)){
+					//red to original
+					ImageCalculator ic = new ImageCalculator();
+		
+					ImagePlus redPMask = ic.run("Multiply create", red, mask);
+					redPMask.show();
+					redPMask.setTitle("RedPMask");
+					redPMask.updateAndRepaintWindow();
+					
+					//green to original
+					ImagePlus greenPMask = ic.run("Multiply create", green, mask);
+					greenPMask.show();
+					greenPMask.setTitle("GreenPMask");
+					greenPMask.updateAndRepaintWindow();
+					
+					//blue to original
+					ImagePlus bluePMask = ic.run("Multiply create", blue, mask);
+					bluePMask.show();
+					bluePMask.setTitle("BluePMask");
+					bluePMask.updateAndRepaintWindow();
+					//create RGB image
+					
+					IJ.run("Merge Channels...", "red=[RedPMask] green=[GreenPMask] blue=[BluePMask] gray=*None*");
+					
+					green.close();
+					blue.close();
+					red.close();
+					//imp.setTitle("Result");
+					//imp.show();
+					}
+					else{
+						IJ.log("Null image error");
+					}
+					
+					
+					
+				}
+			});
+		}
+			return jButtonBinaryClose;
+		
+	}
+	
+	
+	
+	/**
+	 * This method initializes jButtonCleanOutside	
+	 * 	
+	 * @return javax.swing.JButton	
+	 */
+	private JButton getJButtonClearOutsideSelectedAreaAndCrop() {
+		if (jButtonCleanOutside == null) {
+			jButtonCleanOutside = new JButton();
+			jButtonCleanOutside.setText("Clear Outside And Crop");
+			jButtonCleanOutside.setIcon(fileButtonIcon);
+			jButtonCleanOutside.setHorizontalAlignment(SwingConstants.LEFT);
+			
+			jButtonCleanOutside.addMouseListener(new java.awt.event.MouseAdapter() {
+				@Override
+				public void mouseClicked(java.awt.event.MouseEvent e) {
+					imp = IJ.getImage();
+					Polygon polyRoi = IJ.getImage().getRoi().getPolygon();
+					int[] polyXPoints = polyRoi.xpoints;
+					int[] polyYPoints = polyRoi.ypoints;
+					Point mcc = imageProperties.getMinCropCoords();
+					imageProperties.setMinCropCoords(new Point(mcc.x+min(polyXPoints),mcc.y+min(polyYPoints)));
+					
+					IJ.run(imp, "Clear Outside", "");
+					IJ.run(imp, "Crop", "");	
+					imageProperties.setPolygonROI();
+					imageProperties.setCurrentFileInformation();
+					imp = WindowManager.getCurrentImage();
+					imageProperties.setCropWidth(imp.getWidth());
+					imageProperties.setCropHeight(imp.getHeight());
+				}
+			});
+		}
+		return jButtonCleanOutside;
+	}
+	
+	private int min(int[] points){
+		int toreturn = 0;
+		if (points.length > 0){
+			int minPoint = points[0];
+			for (int i = 1; i < points.length; i++)
+			{
+				if (points[i] < minPoint)
+					minPoint = points[i];
+			}
+			toreturn = minPoint;	
+		}
+		return toreturn;
+	}
+	
+	/**
+	 * This method initializes jButtonUserColorThreshold
+	 * 	
+	 * @return javax.swing.JButton	
+	 */
+	private JButton getJButtonUserColorThreshold() {
+		if (jButtonUserColorThreshold == null) {
+			jButtonUserColorThreshold = new JButton();
+			jButtonUserColorThreshold.setText("User Controlled Color Threshold");
+			jButtonUserColorThreshold.setIcon(fileButtonIcon);
+			jButtonUserColorThreshold.setHorizontalAlignment(SwingConstants.LEFT);
+			
+			jButtonUserColorThreshold.addMouseListener(new java.awt.event.MouseAdapter() {
+				
+
+				@Override
+				public void mouseClicked(java.awt.event.MouseEvent e) {
+					ImagePlus currentImage = WindowManager.getCurrentImage();
+					imageProperties.getSavedAndDisplayPolygonROI();		
+					
+					if (currentImage.getTitle().contentEquals("Green Result")){
+						IJ.log("\n Processing Green...");
+						ThreshHolderGUI = new ThresholdAdjust(imageProperties,1);
+					}
+					else if(currentImage.getTitle().contentEquals("Red Result")){
+						IJ.log("\n Processing Red");
+						ThreshHolderGUI = new ThresholdAdjust(imageProperties,2);
+					}
+					else if(currentImage.getTitle().contentEquals("Other Result")){
+						IJ.log("\n Processing Other");
+						ThreshHolderGUI = new ThresholdAdjust(imageProperties,3);
+					}
+					
+					
+				}
+			});
+		}
+		return jButtonUserColorThreshold;
+	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	/**
+	 * This method initializes jButtonCLAHE	
+	 * 	
+	 * @return javax.swing.JButton	
+	 */
+	private JButton getJButtonCLAHE() {
+		if (jButtonCLAHE == null) {
+			jButtonCLAHE = new JButton();
+			jButtonCLAHE.setText("CLAHE (Black and White)");
+			jButtonCLAHE.setIcon(fileButtonIcon);
+			jButtonCLAHE.setHorizontalAlignment(SwingConstants.LEFT);
+			
+			jButtonCLAHE.addMouseListener(new java.awt.event.MouseAdapter() {
+				
+				@Override
+				public void mouseClicked(java.awt.event.MouseEvent e) {
+					
+					ImagePlus currentImage = WindowManager.getCurrentImage();
+					imageProperties.setColorSelection();
+					imageProperties.getSavedAndDisplayPolygonROI();	
+					
+					int blockRadius = (WindowManager.getCurrentImage().getHeight()-1)/3;
+					int bins = 255;
+					float slope = 3;
+					
+					FastFlat.getInstance().run(currentImage, blockRadius, bins, slope, null,(currentImage.isComposite() ));
+					
+					blockRadius = (200-1)/8;	
+					
+					FastFlat.getInstance().run(currentImage, blockRadius, bins, slope, null,(currentImage.isComposite() ));
+					
+					ThreshHolderGUI = new ThresholdAdjust(imageProperties,0);	
+					
+				}
+			});
+		}
+		return jButtonCLAHE;
+	}
+}

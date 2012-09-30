@@ -1,0 +1,1056 @@
+package main;
+
+import java.awt.Point;
+import java.awt.Polygon;
+import java.io.File;
+import java.util.Iterator;
+
+
+import com.drew.imaging.jpeg.JpegMetadataReader;
+import com.drew.imaging.jpeg.JpegProcessingException;
+import com.drew.metadata.Directory;
+import com.drew.metadata.Metadata;
+import com.drew.metadata.MetadataException;
+import com.drew.metadata.Tag;
+
+import coord.LatLonConvert;
+
+import ij.IJ;
+import ij.ImagePlus;
+import ij.WindowManager;
+import ij.gui.GenericDialog;
+import ij.gui.PolygonRoi;
+import ij.gui.Roi;
+import ij.io.FileInfo;
+import ij.process.ImageStatistics;
+
+
+public class imageMetaData {
+
+	private class DPoint
+	{
+		double x;
+		double y;
+		
+		public DPoint(double x_arg, double y_arg)
+		{
+			x = x_arg;
+			y = y_arg;
+		}
+		
+	}
+	
+	public static double DefaultFieldOfViewX = 104;
+	public static double DefaultFieldOfViewY = 81;
+	private int iDay;
+	private int iMonth;
+	private int iYear;
+	private double dLat;
+	private double dLon;
+	private String sTime;
+	private int iHeloHeight;
+	private int iHour;
+	private int iMinutes;
+	private int iSeconds;
+	private double percentCoverBlack;
+	private double percentCoverWhite;
+	private String fileDirectory;
+	private String fileName;
+	private int[] polyXPoints;
+	private int[] polyYPoints;
+	private int numberOfPolyPoints;
+	
+	//----Roger----//
+	//private int[] HeloLineXPoints;
+	//private int[] HeloLineYPoints;
+	//private int numberOfHeloLinePoints;
+	private double percentCoverRedSmall;
+	private double percentCoverGreenSmall;
+	private boolean polySet;
+	private double percentCoverLightGreenSmall;
+	private double percentCoverDarkGreenSmall;
+	private double percentCoverTotalGreenSmall;
+	private double percentTotalAlgaeSmall;
+	private double maxThreshHoldValues;
+	private double minThreshholdValues;
+	private String EXIFlatitude;
+	private String EXIFlongitude;
+	private int EXIFyear;
+	private int EXIFmonth;
+	private int EXIFday;
+	private String EXIFtime;
+	private int EXIFheight;
+	private String EXIFunitOfMeasure;
+	private double EXIFDDegLongitude;
+	private double EXIFDDegLatitude;
+	private double percentCoverBlackSmall;
+	private double area;
+	private double whiteArea;
+	private double blackArea;
+	private double percentCoverRed;
+	private double percentCoverGreen;
+	private double percentCoverLightGreen;
+	private double percentCoverDarkGreen;
+	private double percentCoverTotalGreen;
+	private double percentTotalAlgae;
+	private boolean polySetBig;
+	private int[] polyXPointsBig;
+	private int[] polyYPointsBig;
+	private int numberOfPolyPointsBig;
+	private double minColorThreshholdGreenValue;
+	private double maxColorThreshholdGreenValue;
+	private double userCorGreenPCoverBig;
+	private double userCorGreenPCoverSmall;
+	private double minColorThreshholdRedValue;
+	private double maxColorThreshholdRedValue;
+	private double userCorRedPCoverSmall;
+	private double userCorRedPCoverBig;
+	private double userCorOtherPCoverSmall;
+	private double userCorOtherPCoverBig;
+	private double minColorThreshholdOtherValue;
+	private double maxColorThreshholdOtherValue;
+	private int origImageHeight;
+	private int origImageWidth;
+	private int cropImageWidth;
+	private int cropImageHeight;
+	private Point minCropCoords = new Point(0,0);
+	private int[] HorizonLineXPoints;
+	private int[] HorizonLineYPoints;
+	private int numberOfHorizonLinePoints;
+	private int[] ShoreLineXPoints;
+	private int[] ShoreLineYPoints;
+	private int numberOfShoreLinePoints;
+	private double actualFieldOfViewY = DefaultFieldOfViewY;
+	private double actualFieldOfViewX = DefaultFieldOfViewX;
+	private double fieldOfViewY;
+	private double fieldOfViewX;
+	private double cameraPitch;
+	private int colorSelection = -1;
+	private double gamma=0;
+	private double refined_area;
+	private double[][] pixelAreas;
+	private double distanceToShore = 0;
+	
+	
+	/**
+	 * Creates the dialog box to collect the meta data from the user
+	 * @returns a boolean to say the values have been set
+	 */
+	
+	public void createImageInformationDialogBox() {
+		setCurrentFileInformation();
+		
+		try {
+			setImageExifData();
+		} catch (MetadataException e) {
+			IJ.log("Parse Error");
+			e.printStackTrace();
+		}
+		
+		GenericDialog gd = new GenericDialog("Enter Information", IJ.getInstance());
+	    gd.addMessage("Please enter image date:");
+		gd.addNumericField("Day", EXIFday, 0);
+	    gd.addNumericField("Month", EXIFmonth, 0);
+	    gd.addNumericField("Year", EXIFyear, 0);
+	    
+	    setDecimalLatitudeFromExif();
+		setDecimalLonitudeFromExif();
+	    
+	    gd.addNumericField("Lat:", getExifDecDegLatitude(), 7);
+	    gd.addNumericField("Lon:", getExifDecDegLongitude(), 7);
+	    
+	    gd.addMessage("24 Hours:");
+	    
+	    if (EXIFtime==null){
+	    	EXIFtime = "00:00:00";
+	    }
+	    
+	    gd.addStringField("Time:", EXIFtime);
+	    
+	    gd.addNumericField("Height:", EXIFheight, 0);
+	    String [] heightParams = {"feet","inches","Meters"};	    
+	    gd.addChoice("Height Params",heightParams, heightParams[2]);
+	    
+	    gd.addMessage("Please enter camera parameters:");
+		gd.addNumericField("Horizontal FOV", actualFieldOfViewX, 0);
+	    gd.addNumericField("Vertical FOV", actualFieldOfViewY, 0);
+	    
+	    gd.showDialog();
+	    getUserEnteredInformationFromDialog(gd);
+	    
+	    
+	}
+
+	/**
+	 * 
+	 */
+	public void setCurrentFileInformation() {
+		ImagePlus currentImage;
+	    currentImage = WindowManager.getCurrentImage();
+	    FileInfo currentFileInfo = currentImage.getOriginalFileInfo();
+		fileDirectory = currentFileInfo.directory;
+		fileName = currentFileInfo.fileName;
+	}
+
+	public void setFileDirectory(String fileDir) {
+		this.fileDirectory = fileDir;
+	}
+	
+	public void setFileName(String fileName) {
+		this.fileName = fileName;
+	}
+	
+	public String getCurrentFileDirectory(){
+		return fileDirectory;
+	}
+	
+	public String getCurrentFileName() {
+		return fileName;
+	}
+	
+	/** Gets the user entered data from the dialog box
+	 * @param Generic Dialog box
+	 */
+	private void getUserEnteredInformationFromDialog(GenericDialog gd) {
+		setiDay((int) gd.getNextNumber());
+	    setiMonth((int) gd.getNextNumber());
+	    setiYear((int) gd.getNextNumber());     
+	    setdLat((double) gd.getNextNumber()); 
+        setdLon((double) gd.getNextNumber());     
+        setsTime(gd.getNextString());       
+        setiHeloHeight((int) gd.getNextNumber());
+        setActualFOVX((int)gd.getNextNumber());
+        setActualFOVY((int)gd.getNextNumber());
+        setFOVX(actualFieldOfViewX);
+        setFOVY(actualFieldOfViewY);
+	}
+
+	public void setiHeloHeight(int iHeloHeight) {
+		this.iHeloHeight = iHeloHeight;
+	}
+
+	public int getiHeloHeight() {
+		return iHeloHeight;
+	}
+
+	private void setsTime(String sTime) {
+		this.sTime = sTime;
+			
+		String[] splitTime = sTime.split(":");
+		this.iHour = Integer.parseInt(splitTime[0]);
+		this.iMinutes = Integer.parseInt(splitTime[1]);
+		this.iSeconds = Integer.parseInt(splitTime[2]);
+		
+		
+		
+	}
+
+	private String getsTime() {
+		return sTime;
+	}
+
+	public int getiMinutes(){
+		return iMinutes;
+	}
+	
+	public int getiSeconds(){
+		return iSeconds;
+	}
+	
+	
+	public int getiHour(){
+		return iHour;
+	}
+	
+	public void setdLon(double dLon) {
+		this.dLon = dLon;
+	}
+
+	public double getdLon() {
+		return dLon;
+	}
+
+	public void setdLat(double dLat) {
+		this.dLat = dLat;
+	}
+
+	public double getdLat() {
+		return dLat;
+	}
+
+	public void setiYear(int iYear) {
+		this.iYear = iYear;
+	}
+
+	public int getiYear() {
+		return iYear;
+	}
+
+	public void setiMonth(int iMonth) {
+		this.iMonth = iMonth;
+	}
+
+	public int getiMonth() {
+		return iMonth;
+	}
+
+	public void setiDay(int iDay) {
+		this.iDay = iDay;
+	}
+
+	public int getiDay() {
+		return iDay;
+	}
+
+	
+	/**
+	 * Allows the user to view and modify the image meta data
+	 */
+	public void editImageMetaData() {
+		GenericDialog gd = new GenericDialog("Enter Information", IJ.getInstance());
+	    gd.addMessage("Please enter image date:");
+		gd.addNumericField("Day", getiDay(), 0);
+	    gd.addNumericField("Month", getiMonth(), 0);
+	    gd.addNumericField("Year", getiYear(), 0);
+	    
+	    gd.addNumericField("Lat:", getdLat(), 7);
+	    gd.addNumericField("Lon:", getdLon(), 7);
+	    
+	    gd.addMessage("24 Hours:");
+	    gd.addStringField("Time:", getsTime());
+	    
+	    gd.addNumericField("Height:", getiHeloHeight(), 0);
+	    String [] heightParams = {"feet","inches","Meters"};	    
+	    gd.addChoice("Height Params",heightParams, heightParams[2]);
+	    
+	    gd.showDialog();
+	    getUserEnteredInformationFromDialog(gd);
+		
+	}
+
+	public double getiPercentCoverBlack() {
+		return percentCoverBlack;
+	}
+	
+	public double getiPercentCoverWhite(){
+		return percentCoverWhite;
+	}
+	/*
+	public int getiPixelCount(){
+		return pixelCount;
+	}*/
+	/*public void setPixelCountCC(){
+		 ImagePlus imp;
+	     imp = WindowManager.getCurrentImage();
+		 imp.show();
+		
+		
+		ImageStatistics imageStats = imp.getStatistics();
+		pixelCountCC = imageStats.pixelCount;
+		IJ.log("CC: "+pixelCountCC);
+	}*/
+	
+	public void calculateGamma()
+	{
+		gamma = Math.toRadians(90-cameraPitch-fieldOfViewY/2);
+	}
+	
+	public void calculateArea(){
+		int c_width = getCropWidth();
+		int c_height = getCropHeight();
+		Polygon polyRoi = IJ.getImage().getRoi().getPolygon();
+		area = 0;
+		pixelAreas = new double[c_width][c_height];
+		for (int y = 0; y < c_height; y++)
+		{
+			for (int x = 0; x < c_width; x++)
+			{
+				if (polyRoi.contains(x, y))
+				{
+					double pixArea = calculateAreaAtPixel(x+minCropCoords.x-origImageWidth/2.0,-(y+minCropCoords.y)+origImageHeight);
+					area += pixArea;
+					pixelAreas[x][y] = pixArea;
+				}
+			}
+		}
+		refined_area = area;
+	}
+	
+	public double calculateAreaAtPixel(double x, double y)
+	{
+		DPoint top_left = getLocation(x-.5, y+.5);
+		DPoint top_right = getLocation(x+.5, y+.5);
+		DPoint bottom_left = getLocation(x-.5, y-.5);
+		DPoint bottom_right = getLocation(x+.5, y-.5);
+		return .5*((top_right.x-top_left.x)+(bottom_right.x-bottom_left.x))*(top_left.y-bottom_left.y);
+	}
+	
+	//0,0 is bottom center of screen!!
+	private DPoint getLocation(double x, double y)
+	{
+		//do it all in radians
+		double thetaY = gamma + Math.toRadians(y*fieldOfViewY/origImageHeight);
+		double thetaX = Math.toRadians(x*fieldOfViewX/origImageWidth);
+		double ninety =Math.PI/2;
+		double forty_five = Math.PI/4;
+		double dy = iHeloHeight*Math.sin(forty_five-thetaY+gamma)/Math.sin(forty_five+thetaY-gamma);
+		double dx = iHeloHeight*Math.sin(thetaX)/Math.sin(ninety-thetaX);
+		double hyp1 = Math.sqrt(dy*dy+iHeloHeight*iHeloHeight);
+		double hyp2 = Math.sqrt(dx*dx+hyp1*hyp1);
+		double thetaX_2 = Math.asin(dx/hyp2);
+		double new_y = iHeloHeight*Math.sin(thetaY)/Math.sin(ninety-thetaY);
+		double new_x = Math.sqrt(new_y*new_y+iHeloHeight*iHeloHeight)*Math.sin(thetaX_2)/Math.sin(ninety-thetaX_2);
+		return new DPoint(new_x,new_y);
+	}
+	
+	public void calculateShoreLineDistance()
+	{
+		//Pixel coordinates of points on shore line
+		int x1 = getShoreLineXPoints()[0]-origImageWidth/2;
+		int x2 = getShoreLineXPoints()[1]-origImageWidth/2;
+		int y1 = origImageHeight-getShoreLineYPoints()[0];
+		int y2 = origImageHeight-getShoreLineYPoints()[1];
+		//Coordinates of said point
+		DPoint P1 = getLocation((double)x1,(double)y1);
+		DPoint P2 = getLocation((double)x2,(double)y2);
+		double mag = Math.sqrt((P2.y-P1.y)*(P2.y-P1.y)+(P2.x-P1.x)*(P2.x-P1.x));
+		//Direction along that line
+		double y_norm = (P2.y-P1.y)/mag;
+		double x_norm =  (P2.x-P1.x)/mag;
+		//Point 1 to Helicopter
+		double P1_to_Helo_X =  -P1.x;
+		double P1_to_Helo_Y = -P1.y;
+		double projected_vec = P1_to_Helo_X*x_norm+P1_to_Helo_Y*y_norm;
+		//Point on shore that's closest (perpendicular distance to line)
+		DPoint shorePoint = new DPoint(P1.x+x_norm*projected_vec,P1.y+y_norm*projected_vec);
+		distanceToShore = Math.sqrt(Math.pow(shorePoint.x, 2)+Math.pow(shorePoint.y, 2));
+		double parallelDistance = desiredDistance*desiredDistance-distanceToShore*distanceToShore;
+		point1 = new Point(shorePoint.x+parallelDistance*x_norm, shorePoint.y+parallelDistance*y_norm);
+		point2 = new Point(shorePoint.x-parallelDistance*x_norm, shorePoint.y-parallelDistance*y_norm);
+	}
+	
+	public double getShoreLineDistance()
+	{
+		return distanceToShore;
+	}
+	
+	public double getArea(){
+		return area;
+	}
+	
+	public double getRefinedArea(){
+		return refined_area;
+	}
+	
+	
+	public void createPercentCovers(){
+		 ImagePlus imp;
+	     imp = WindowManager.getCurrentImage();
+		 imp.show();
+		
+		whiteArea = 0;
+		blackArea = 0;
+		int c_width = getCropWidth();
+		int c_height = getCropHeight();
+		getSavedAndDisplayPolygonROI();
+		Polygon polyRoi = IJ.getImage().getRoi().getPolygon();
+		refined_area = 0;
+		for (int y = 0; y < c_height; y++)
+		{
+			for (int x = 0; x < c_width; x++)
+			{
+				if (polyRoi.contains(x, y))
+				{
+					double pix_area = pixelAreas[x][y];
+					refined_area += pix_area;
+					int[] color = imp.getPixel(x,y);
+					if (color[0] == 0)
+					{
+						whiteArea += pix_area;
+					}
+					else
+					{
+						blackArea += pix_area;
+					}
+				}
+			}
+		}
+
+		percentCoverBlack = (((double)blackArea/(double)area)*100);//divide by area
+		percentCoverWhite = (((double)whiteArea/(double)area)*100);
+		
+		percentCoverBlackSmall = (((double)blackArea/(double)refined_area)*100);
+	}
+
+	public double getiPercentCoverBlackSmall() {
+		return percentCoverBlackSmall;
+	}
+	
+	public void setPolygonROI() {
+		Polygon polyRoi = IJ.getImage().getRoi().getPolygon();
+		polySet = true;
+		polyXPoints = polyRoi.xpoints;
+		polyYPoints = polyRoi.ypoints;
+		numberOfPolyPoints = polyRoi.npoints;
+		
+	}
+
+	public void getSavedAndDisplayPolygonROI() {
+		IJ.getImage().setRoi(new PolygonRoi(getPolygonXPoints(),getPolygonYPoints(),getPolygonNumberOfPoints(),Roi.POLYGON));
+	}
+	
+	public void getSavedRoiFromTitle(String title){
+		WindowManager.getImage(title).setRoi(new PolygonRoi(getPolygonXPoints(),getPolygonYPoints(),getPolygonNumberOfPoints(),Roi.POLYGON));
+	}
+	
+	
+	public int[] getPolygonXPoints() {
+		return polyXPoints;
+	}
+	
+	public int[] getPolygonYPoints() {
+		return polyYPoints;
+		
+	}
+	
+	public int[] getBigPolygonXPoints() {
+		return polyXPointsBig;
+	}
+	
+	public int[] getBigPolygonYPoints() {
+		return polyYPointsBig;
+		
+	}
+	/**
+	 * 
+	 * @return number of pixels in the polygon
+	 */
+	public int getPolygonNumberOfPoints(){
+		return numberOfPolyPoints;
+		
+	}
+
+	//----Roger----//
+	/*public void setHeloLineROI() {
+		Polygon LineRoi = IJ.getImage().getRoi().getPolygon();
+		
+		HeloLineXPoints = LineRoi.xpoints;
+		HeloLineYPoints = LineRoi.ypoints;
+		numberOfHeloLinePoints = LineRoi.npoints;
+		
+	}
+
+	public int getHeloLineNumberOfPoints() {
+		return numberOfHeloLinePoints;	
+	}
+
+	public int[] getHeloLineYPoints() {
+		return HeloLineYPoints;
+	}
+
+	public int[] getHeloLineXPoints() {
+		return HeloLineXPoints;
+	}*/
+
+	public void setPercentageRedAndGreenCover(double perRedCoverage, double perLightGreenCoverage, double perGreenCoverage, double perDarkGreenCoverage, double perTotalGreenCoverage, double perTotalAlgaeCoverage) {
+		this.percentCoverRed = perRedCoverage;
+		this.percentCoverGreen = perGreenCoverage;
+		this.percentCoverLightGreen = perLightGreenCoverage;
+		this.percentCoverDarkGreen = perDarkGreenCoverage;
+		this.percentCoverTotalGreen = perTotalGreenCoverage;
+		this.percentTotalAlgae = perTotalAlgaeCoverage;
+	}
+	
+	public void setPercentageRedAndGreenCoverSmall(double perRedCoverage, double perLightGreenCoverage, double perGreenCoverage, double perDarkGreenCoverage, double perTotalGreenCoverage, double perTotalAlgaeCoverage) {
+		this.percentCoverRedSmall = perRedCoverage;
+		this.percentCoverGreenSmall = perGreenCoverage;
+		this.percentCoverLightGreenSmall = perLightGreenCoverage;
+		this.percentCoverDarkGreenSmall = perDarkGreenCoverage;
+		this.percentCoverTotalGreenSmall = perTotalGreenCoverage;
+		this.percentTotalAlgaeSmall = perTotalAlgaeCoverage;
+	}
+	
+	
+	public double getGreenPercentCoverageSmall() {
+		return percentCoverGreenSmall;
+	}
+	
+	public double getRedPercentCoverageSmall() {
+		return percentCoverRedSmall;
+	}
+
+	public boolean isPolySet() {
+		return polySet;
+	}
+
+	public double getLightGreenPercentCoverageSmall() {
+		return percentCoverLightGreenSmall;
+	}
+
+	public double getDarkGreenPercentCoverageSmall() {
+		return percentCoverDarkGreenSmall;
+	}
+
+	public double getTotalGreenPercentCoverageSmall() {
+		return percentCoverTotalGreenSmall;
+	}
+
+	public double getTotalAlgaePercentCoverageSmall() {
+		return percentTotalAlgaeSmall;
+	}
+
+	//LARGE AREA
+	
+	public double getLightGreenPercentCoverage() {
+		return percentCoverLightGreen;
+	}
+
+	public double getDarkGreenPercentCoverage() {
+		return percentCoverDarkGreen;
+	}
+
+	public double getTotalGreenPercentCoverage() {
+		return percentCoverTotalGreen;
+	}
+
+	public double getTotalAlgaePercentCoverage() {
+		return percentTotalAlgae;
+	}
+	
+	public double getGreenPercentCoverage() {
+		return percentCoverGreen;
+	}
+	
+	public double getRedPercentCoverage() {
+		return percentCoverRed;
+	}
+	
+	
+	public void setMaxThreshold(double maxThreshHoldValues) {
+		this.maxThreshHoldValues = maxThreshHoldValues;
+		
+	}
+
+	public void setMinThreshold(double minThreshholdValues) {
+		this.minThreshholdValues = minThreshholdValues;
+	}
+	
+	public double getMinThreshold() {
+		return minThreshholdValues; 
+	}
+	
+	public double getMaxThreshold() {
+		return maxThreshHoldValues;
+	}
+
+	/**
+	 * gets the Exif meta data tags from the image using DREW LIB
+	 * @param uses current file dir and file name
+	 * @throws MetadataException 
+	 */
+	public void setImageExifData() throws MetadataException {
+		File jpegFile = new File(getCurrentFileDirectory()+getCurrentFileName());
+		try 
+		{
+			Metadata metadata = JpegMetadataReader.readMetadata(jpegFile);
+			
+			if (metadata != null){
+			
+			Iterator directories = metadata.getDirectoryIterator();
+			while (directories.hasNext()) {
+			    Directory directory = (Directory)directories.next();
+			    // iterate through tags
+
+			    Iterator tags = directory.getTagIterator();
+			    while (tags.hasNext()) {
+			        Tag tag = (Tag)tags.next();
+			        		if (tag.getTagName().equalsIgnoreCase("GPS Longitude"))
+			        		{	
+				        		EXIFlongitude = tag.getDescription();
+			        		}
+			        		else if (tag.getTagName().equalsIgnoreCase("GPS Latitude"))
+			        		{
+				        		EXIFlatitude = tag.getDescription();	
+			        		}
+			        		else if (tag.getTagName().equalsIgnoreCase("Date/Time Original"))
+			        		{
+			        			String dateTime = tag.getDescription();		        		
+				        		String[] split = dateTime.split(" ");		        		
+				        		//System.out.println(split[0]);
+				        		String[] DateSplit = split[0].split(":");
+	
+				        		EXIFyear = Integer.parseInt(DateSplit[0]);
+				        		EXIFmonth = Integer.parseInt(DateSplit[1]);
+				        		EXIFday = Integer.parseInt(DateSplit[2]);
+				        		EXIFtime = split[1];
+			        		}
+			        		if (tag.getTagName().equalsIgnoreCase("GPS Altitude"))
+			        		{
+			        			String[] split = tag.getDescription().split(" ");
+			        			EXIFheight = Integer.parseInt(split[0]);
+			        			EXIFunitOfMeasure = split[1];	
+			        		}
+			        		
+			        }	        
+			    }	    
+		} 
+			//set default values
+			else
+			{
+		    IJ.log("ERROR:Could not parse EXIF meta data");
+			EXIFday=0;
+			EXIFmonth=0;
+			EXIFtime="00:00:00";
+			EXIFyear = 0;
+			EXIFheight=0;
+			EXIFlatitude="0";
+			EXIFlongitude="0";
+			EXIFunitOfMeasure = "0";
+			}
+		}
+		catch (JpegProcessingException e) 
+		{
+			e.printStackTrace();
+			IJ.log("ERROR:Could not get Meta Data.");
+		}
+		
+	}
+	
+	public String getExifLongitude() {
+		return EXIFlongitude;
+	}
+	
+	public String getExifLatitude(){
+		return EXIFlatitude;
+		
+	}
+
+	public void setDecimalLonitudeFromExif() {
+		
+		String degMinSec = EXIFlongitude;
+		
+		if (degMinSec != null){
+		
+		if (degMinSec.contains("\"")){
+		String[] a = (degMinSec.split("\""));
+		
+		Double deg = Double.parseDouble(a[0]);	
+		String[] b = (a[1].split("\'"));
+		Double min = Double.parseDouble(b[0]);
+		String c = b[1];
+		Double sec = Double.parseDouble(c);
+		
+		LatLonConvert latlon = new LatLonConvert(deg, min, sec);
+		EXIFDDegLongitude = latlon.getDecimal();
+	    }
+		}
+		else
+		{
+	    EXIFDDegLongitude = 0;
+		IJ.log("ERROR Parsing lon data");	
+		}
+	}
+	
+	public void setDecimalLatitudeFromExif() {
+		String degMinSec = EXIFlatitude;
+		if (degMinSec != null){
+			
+		
+		if (degMinSec.contains("\"")){
+		
+		String[] a = (degMinSec.split("\""));
+		
+		Double deg = Double.parseDouble(a[0]);	
+		String[] b = (a[1].split("\'"));
+		Double min = Double.parseDouble(b[0]);
+		String c = b[1];
+		Double sec = Double.parseDouble(c);
+		
+		LatLonConvert latlon = new LatLonConvert(deg, min, sec);
+		EXIFDDegLatitude = latlon.getDecimal();
+		}
+		}
+		else
+		{
+		EXIFDDegLatitude =0;
+		IJ.log("ERROR Parsing lat data");	
+		}
+	}
+	
+	/**
+	 * @return decimal degrees longitude
+	 */
+	public double getExifDecDegLongitude() {
+		return EXIFDDegLongitude;
+	}
+	
+	public double getExifDecDegLatitude() {
+		return EXIFDDegLatitude;
+	}
+
+	public void setMaxAreaPolygon() {
+		Polygon polyRoi = IJ.getImage().getRoi().getPolygon();
+		polySetBig = true;
+		polyXPointsBig = polyRoi.xpoints;
+		polyYPointsBig = polyRoi.ypoints;
+		numberOfPolyPointsBig = polyRoi.npoints;
+		
+	}
+
+	public double getMinColorGreenThreshold() {
+		return minColorThreshholdGreenValue;
+	}
+
+	public double getMaxColorGreenThreshold() {
+		return maxColorThreshholdGreenValue;
+	}
+
+	public void setMinColorThresholdGreen(double savedColorThreshMin) {
+		this.minColorThreshholdGreenValue = savedColorThreshMin;
+	}
+
+	public void setMaxColorThresholdGreen(double savedColorThreshMax) {
+		this.maxColorThreshholdGreenValue = savedColorThreshMax;	
+	}
+
+	public void setUserCorrectedGreenPercentCoverBig(double percentCoverBlackBig) 
+	{
+		this.userCorGreenPCoverBig = percentCoverBlackBig;
+	}
+
+	public void setUserCorrectedGreenPercentCoverSmall(double percentCoverBlackSmall) {
+		this.userCorGreenPCoverSmall = percentCoverBlackSmall;
+	}
+	
+	public double getUserSetGreenCoverageBig() {
+		return userCorGreenPCoverBig;
+	}
+	public double getUserSetGreenCoverageSmall(){
+		return userCorGreenPCoverSmall;
+	}
+
+	public void setMinColorThresholdRed(double savedColorThreshMin) {
+		this.minColorThreshholdRedValue = savedColorThreshMin;
+		
+	}
+
+	public void setMaxColorThresholdRed(double savedColorThreshMax) {
+		this.maxColorThreshholdRedValue = savedColorThreshMax;
+		
+	}
+	
+	public double getMinColorRedThreshold() {
+		return minColorThreshholdRedValue;
+	}
+	
+	public double getMaxColorRedThreshold(){
+		return maxColorThreshholdRedValue;
+	}
+
+	public void setUserCorrectedRedPercentCoverSmall(double percentCoverBlackSmall) {
+		this.userCorRedPCoverSmall = percentCoverBlackSmall;
+		
+	}
+
+	public void setUserCorrectedRedPercentCoverBig(double percentCoverBlackBig) {
+		this.userCorRedPCoverBig = percentCoverBlackBig;
+		
+	}
+
+	public double getUserSetRedCoverageSmall() {
+		return userCorRedPCoverSmall;
+	}
+	
+	public double getUserSetRedCoverageBig(){
+		return userCorRedPCoverBig;
+	}
+
+	public void setMinColorThresholdOther(double savedColorThreshMin) {
+		this.minColorThreshholdOtherValue = savedColorThreshMin;
+		
+	}
+
+	public void setMaxColorThresholdOther(double savedColorThreshMax) {
+		this.maxColorThreshholdOtherValue = savedColorThreshMax;	
+	}
+
+	public double getMaxColorBrownThreshold() {
+		return maxColorThreshholdOtherValue;
+	}
+	
+	public double getMinColorBrownThreshold() {
+		return minColorThreshholdOtherValue;
+	}
+	
+	public void setUserCorrectedOtherPercentCoverSmall(double d) {
+		this.userCorOtherPCoverSmall = d;	
+	}
+
+	public void setUserCorrectedOtherPercentCoverBig(double d) {
+		this.userCorOtherPCoverBig =d;	
+	}
+	
+	public double getUserSetBrownCoverageSmall() {
+		return userCorOtherPCoverSmall;
+	}
+	
+	public double getUserSetBrownCoverageBig(){
+		return userCorOtherPCoverBig;
+	}
+
+	public int getImageHeight() {
+		return origImageHeight;
+	}
+
+	public int getImageWidth() {
+		return origImageWidth;
+	}
+
+	public void setImageHeight(int height) {
+		this.origImageHeight = height;
+	}
+
+	public void setImageWidth(int width) {
+		this.origImageWidth = width;
+	}
+
+	public int getCropWidth()
+	{
+		return cropImageWidth;	
+	}
+	
+	public int getCropHeight()
+	{
+		return cropImageHeight;
+	}
+	
+	public void setCropWidth(int width)
+	{
+		cropImageWidth = width;
+	}
+	
+	public void setCropHeight(int height)
+	{
+		cropImageHeight = height;
+	}
+	
+	
+	public void setMinCropCoords(Point p){
+		minCropCoords.x = p.x;
+		minCropCoords.y = p.y;
+	}
+	
+	public Point getMinCropCoords()
+	{
+		return minCropCoords;
+	}
+	
+	public void setHorizonLineROI() {
+		Polygon LineRoi = IJ.getImage().getRoi().getPolygon();	
+		HorizonLineXPoints = LineRoi.xpoints;
+		HorizonLineYPoints = LineRoi.ypoints;
+		numberOfHorizonLinePoints = LineRoi.npoints;		
+	}
+	
+	public void setShoreLineROI() {
+		Polygon LineRoi = IJ.getImage().getRoi().getPolygon();	
+		ShoreLineXPoints = LineRoi.xpoints;
+		ShoreLineYPoints = LineRoi.ypoints;
+		numberOfShoreLinePoints = LineRoi.npoints;	
+	}
+	
+	public int getHorizonLineNumberOfPoints() {
+		return numberOfHorizonLinePoints;	
+	}
+
+	public int[] getHorizonLineYPoints() {
+		return HorizonLineYPoints;
+	}
+
+	public int[] getHorizonLineXPoints() {
+		return HorizonLineXPoints;
+	}
+	
+	
+	public int getShoreLineNumberOfPoints() {
+		return numberOfShoreLinePoints;	
+	}
+
+	public int[] getShoreLineYPoints() {
+		return ShoreLineYPoints;
+	}
+
+	public int[] getShoreLineXPoints() {
+		return ShoreLineXPoints;
+	}
+	
+	public void setColorSelection()
+	{
+		String windowName = WindowManager.getCurrentImage().getTitle();
+		if (windowName.equals("RGB IMAGE (red)"))
+		{
+			colorSelection = 0;
+		}
+		else if (windowName.equals("RGB IMAGE (green)"))
+		{
+			colorSelection = 1;
+		}
+		else if (windowName.equals("RGB IMAGE (blue)"))
+		{
+			colorSelection = 2;
+		}
+		else
+		{
+			colorSelection = -1;
+			IJ.log("Warning: Color filter selection invalid...");
+		}
+	}
+	
+	public int getColorSelection()
+	{
+		return colorSelection;
+	}
+	
+	public void setPitch(double pitch)
+	{
+		cameraPitch = pitch;
+	}
+	
+	public double getPitch()
+	{
+		return cameraPitch;
+	}
+	
+	public void setFOVY(double fovy)
+	{
+		fieldOfViewY = fovy;
+	}
+	
+	public double getFOVY()
+	{
+		return fieldOfViewY;
+	}
+	public void setFOVX(double fovx)
+	{
+		fieldOfViewX = fovx;
+	}
+	public double getFOVX()
+	{
+		return fieldOfViewX;
+	}
+	
+	public void setActualFOVX(double fovx)
+	{
+		actualFieldOfViewX = fovx;
+	}
+	
+	public void setActualFOVY(double fovy)
+	{
+		actualFieldOfViewY = fovy;
+	}
+	
+	public double[][] getPixelAreas()
+	{
+		return pixelAreas;
+	}
+}

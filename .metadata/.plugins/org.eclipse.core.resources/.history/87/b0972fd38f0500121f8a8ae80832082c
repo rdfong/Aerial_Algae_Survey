@@ -1,0 +1,155 @@
+package color;
+
+import ij.IJ;
+import ij.ImagePlus;
+import ij.WindowManager;
+import ij.gui.GenericDialog;
+import ij.plugin.Duplicator;
+
+public class OtherOptions {
+
+	private boolean redoGreen;
+	private boolean redoRed;
+	private boolean addOther;
+	private String imageTitle;
+	private boolean redoGreenAndRed;
+	private String redIs;
+	private String greenIs;
+	private String otherIs;
+	private String commentIs;
+	
+	public OtherOptions(String currentFileName) {
+		this.imageTitle = currentFileName;
+	}
+
+	public void createOtherOptionsGUI() {
+		GenericDialog gd = new GenericDialog("Other Color Options", IJ.getInstance());
+	    gd.addMessage("Please select from the following options:");
+		
+	    gd.addCheckbox("ReDo Green", false);
+	    gd.addCheckbox("ReDo Red", false);
+	    gd.addCheckbox("ReDo Both Green and Red", false);
+	    gd.addCheckbox("add additional band (other)", false);
+	    
+	    String [] listItems = {"Red","Green","Brown","Other"};
+	    
+	    gd.addChoice("Green is:", listItems, listItems[1]);
+	    gd.addChoice("Red is:", listItems, listItems[0]);
+	    gd.addChoice("Other is:", listItems, listItems[3]);
+	    
+	    gd.addStringField("Comment", "None", 15);
+	    
+	    gd.showDialog();
+	    getUserEnteredInformationFromDialog(gd);
+	}
+
+	private void getUserEnteredInformationFromDialog(GenericDialog gd) {
+		setRedoGreen(gd.getNextBoolean());
+		setRedoRed(gd.getNextBoolean());
+		setRedoGreenAndRed((gd.getNextBoolean()));
+		setAddOther(gd.getNextBoolean());
+		
+		greenIs = gd.getNextChoice();
+		redIs = gd.getNextChoice();
+		otherIs = gd.getNextChoice();
+		commentIs = gd.getNextString();
+		
+		IJ.log("-Color Settings-");
+		IJ.log("Green"+":"+greenIs);
+		IJ.log("Red"+":"+redIs);
+		IJ.log("Other"+":"+otherIs);
+		IJ.log("Comment"+":"+commentIs);
+		
+		if (getRedoGreenAndRed()==true){
+			String color = "Green";
+			createNewImageBasedOnHue(color);
+			color = "Red";
+			createNewImageBasedOnHue(color);
+			
+		}		
+		else if (getRedoGreen() ==true){
+			String color = "Green";
+			createNewImageBasedOnHue(color);
+		}
+		else if (getRedoRed() ==true){
+			String color = "Red";
+			createNewImageBasedOnHue(color);
+		}
+		else if (getAddOther() ==true){
+			String color = "Other";
+			createNewImageBasedOnHue(color);
+		}
+		else{
+			IJ.log("No options selected");
+		}
+		
+	}
+
+	public String getRedIsString() {
+		return redIs;
+	}
+	
+	public String getGreenIsString(){
+		return greenIs;
+	}
+	
+	public String getOtherIsString(){
+		return otherIs;
+	}
+	
+	public String getCommentIsString() {
+		if ((commentIs == null)|| ((commentIs.isEmpty()))){
+		return "None";	
+		}
+		else{
+		return commentIs;
+		}
+	}
+	
+	/**
+	 * @param color
+	 */
+	private void createNewImageBasedOnHue(String color) {
+		ImagePlus imp = WindowManager.getImage("RGB"+" (hue)");
+		ImagePlus newimp = new Duplicator().run(imp);	
+		
+		ImagePlus impColor = WindowManager.getImage(color+" Result");
+		if (impColor!=null){impColor.close();}
+		newimp.setTitle(color+" Result");
+		newimp.show();
+		IJ.log("New "+color+" Created...");
+	}
+
+	public void setRedoGreen(boolean redoGreen) {
+		this.redoGreen = redoGreen;
+	}
+
+	public boolean getRedoGreen() {
+		return redoGreen;
+	}
+
+	public void setRedoRed(boolean redoRed) {
+		this.redoRed = redoRed;
+	}
+
+	public boolean getRedoRed() {
+		return redoRed;
+	}
+
+	public void setAddOther(boolean addOther) {
+		this.addOther = addOther;
+	}
+
+	public boolean getAddOther() {
+		return addOther;
+	}
+
+	public void setRedoGreenAndRed(boolean redoGreenAndRed) {
+		this.redoGreenAndRed = redoGreenAndRed;
+	}
+
+	public boolean getRedoGreenAndRed() {
+		return redoGreenAndRed;
+	}
+	
+}

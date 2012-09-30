@@ -1,0 +1,46 @@
+package com.algae.excel.parser;
+
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+public class CSVWriter {
+
+	private List<String[]> Info = new ArrayList<String[]>();
+	
+	public CSVWriter(){
+		this.Info = new ArrayList<String[]>();
+	}
+
+	public void addDataToCSVFile(String[] a) {
+		this.Info.add(a);
+		
+	}
+
+	
+	
+	
+	public void writeToCSVFile() throws IOException {
+		
+		String fileName = "C:/Users/Andy/Documents/test.csv";	
+		FileWriter writer = new FileWriter(fileName);
+		
+		
+		
+		for (int i = 0; i < Info.size(); i++) {
+			//get the data from the 
+			String [] b = Info.get(i);
+			writer.append(b[0]);
+			writer.append(',');
+			writer.append(b[1]);
+			writer.append(',');
+			writer.append(b[2]);
+			writer.append(',');
+			writer.append('\n');
+			writer.flush();
+		}
+		writer.close();
+	}
+
+}

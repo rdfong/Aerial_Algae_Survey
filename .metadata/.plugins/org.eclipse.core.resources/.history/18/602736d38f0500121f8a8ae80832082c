@@ -1,0 +1,32 @@
+package color;
+
+import static org.junit.Assert.assertEquals;
+import ij.gui.GenericDialog;
+
+import org.junit.Test;
+
+
+public class ColorProcessingTest {
+
+	
+	@Test
+	public void testCanCreateSliderAndGetValue() throws Exception {
+		
+		GenericDialog gd = new GenericDialog("Color Panel");
+	    gd.addMessage("Please select Color(s):");
+		gd.addHelp("www.oce.uri.edu/algae");
+		
+	    String[] labels = {"Green and Red ","Show HSV Images","Filter Wave Action"};
+	    boolean[] values = {true, true,true};
+	    gd.addCheckboxGroup(3, 1, labels, values);
+	    gd.addSlider("Wave Action Filter", 0, 10, 5);
+	    
+	    gd.showDialog();
+	    
+	    boolean greenRedBol = gd.getNextBoolean();
+		boolean showBol = gd.getNextBoolean();
+		double slider = gd.getNextNumber();
+	
+		assertEquals(5, slider, 0);
+	}
+}

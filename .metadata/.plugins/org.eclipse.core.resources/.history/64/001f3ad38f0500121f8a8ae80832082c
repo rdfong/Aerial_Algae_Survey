@@ -1,0 +1,243 @@
+package main;
+
+import static org.junit.Assert.*;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Iterator;
+
+import org.junit.Test;
+
+import com.drew.imaging.jpeg.JpegMetadataReader;
+import com.drew.metadata.Directory;
+import com.drew.metadata.Metadata;
+import com.drew.metadata.Tag;
+import com.drew.metadata.exif.ExifDirectory;
+import com.drew.metadata.exif.ExifReader;
+
+import coord.LatLonConvert;
+
+
+public class imageMetaDataTest {
+
+	private String longitude;
+	private String latitude;
+	private String DateTime;
+	private String year;
+	private String height;
+	private String unitOfMeasure;
+	private Object day;
+	private Object month;
+
+	@Test
+	public void testGetEXIFDataFromImage() throws Exception {
+				
+		File jpegFile = new File("C:/Users/Andy/Desktop/Image Job/test images/6-22-10--0010_tag.jpg");
+		Metadata metadata = JpegMetadataReader.readMetadata(jpegFile);
+		
+		assertTrue(metadata!=null);
+		
+	}
+	
+	@Test
+	public void testGetDataTagsFromImage() throws Exception {
+		File jpegFile = new File("C:/Users/Andy/Desktop/Image Job/test images/6-22-10--0010_tag.jpg");
+		Metadata metadata = JpegMetadataReader.readMetadata(jpegFile);
+		
+		// iterate through metadata directories
+		Iterator directories = metadata.getDirectoryIterator();
+		while (directories.hasNext()) {
+		    Directory directory = (Directory)directories.next();
+		    // iterate through tags and print to System.out
+		    
+		    
+		    Iterator tags = directory.getTagIterator();
+		    while (tags.hasNext()) {
+		        Tag tag = (Tag)tags.next();
+		        //Tag.toString();
+		        //System.out.println(tag);
+		    }
+		    
+		  
+		    
+		}
+	}
+	
+	@Test
+	public void testGetLonAndLatInformation() throws Exception {
+	
+		File jpegFile = new File("C:/Users/Andy/Desktop/Image Job/test images/6-22-10--0010_tag.jpg");
+		Metadata metadata = JpegMetadataReader.readMetadata(jpegFile);
+		
+		// iterate through metadata directories
+		Iterator directories = metadata.getDirectoryIterator();
+		while (directories.hasNext()) {
+		    Directory directory = (Directory)directories.next();
+		    // iterate through tags and print to System.out
+
+		    Iterator tags = directory.getTagIterator();
+		    while (tags.hasNext()) {
+		        Tag tag = (Tag)tags.next();
+
+		        System.out.println(tag.getTagName());	 
+        		System.out.println(tag.getDescription());	
+		        
+		        if (tag.toString().contains("GPS"))
+		        {
+		        		if (tag.getTagName().equalsIgnoreCase("GPS Longitude"))
+		        		{
+		        			System.out.println(tag.getTagName());	 
+			        		System.out.println(tag.getDescription());	
+			        		longitude = tag.getDescription();
+		        		}	
+		        		else if (tag.getTagName().equalsIgnoreCase("GPS Longitude Ref"))
+		        		{	
+		        		} 
+		        		else if (tag.getTagName().equalsIgnoreCase("GPS Latitude Ref"))
+		        		{	
+		        		}
+		        		else if (tag.getTagName().equalsIgnoreCase("GPS Latitude"))
+		        		{
+		        			System.out.println(tag.getTagName());	 
+			        		System.out.println(tag.getDescription());	
+			        		latitude = tag.getDescription();	
+		        		}
+		        }	        
+		    }	    
+		}
+	assertEquals("71\"20'15.0", longitude);
+	assertEquals("41\"43'23.88", latitude);
+	}
+	
+	@Test
+	public void testMetaTestGetLatLon() throws Exception {
+		
+		imageMetaData im = new imageMetaData();
+		
+		String fileDir = "C:/Users/Andy/Desktop/Image Job/test images/";
+		String fileName = "6-22-10--0010_tag.jpg";
+		
+		im.setFileDirectory(fileDir);
+		im.setFileName(fileName);
+		
+		assertEquals("C:/Users/Andy/Desktop/Image Job/test images/", im.getCurrentFileDirectory());
+		
+		im.setImageExifData();
+	}
+	
+	@Test
+	public void getDateTimeFromExif() throws Exception {
+		File jpegFile = new File("C:/Users/Andy/Desktop/Image Job/test images/6-22-10--0010_tag.jpg");
+		Metadata metadata = JpegMetadataReader.readMetadata(jpegFile);
+		
+		// iterate through metadata directories
+		Iterator directories = metadata.getDirectoryIterator();
+		while (directories.hasNext()) {
+		    Directory directory = (Directory)directories.next();
+		    // iterate through tags and print to System.out
+
+		    Iterator tags = directory.getTagIterator();
+		    while (tags.hasNext()) {
+		        Tag tag = (Tag)tags.next();
+		        System.out.println(tag.getTagName());	 
+        		System.out.println(tag.getDescription());	
+		        		if (tag.getTagName().equalsIgnoreCase("Date/Time Original"))
+		        		{
+		        			System.out.println(tag.getTagName());	 
+			        		System.out.println(tag.getDescription());	
+			        		DateTime = tag.getDescription();
+			        		
+			        		String[] split = DateTime.split(" ");
+			        		
+			        		System.out.println(split[0]);
+			        		String[] DateSplit = split[0].split(":");
+			        		System.out.println(DateSplit[0]);
+			        		
+			        		year = DateSplit[0];
+			        		month = DateSplit[1];
+			        		day = DateSplit[2];
+			        		
+			        		String TimeSplit = split[1];
+			        		System.out.println(TimeSplit);
+		        		}	
+		                
+		    }	    
+		}
+		assertEquals(Integer.toString(2010), year);
+		assertEquals(Integer.toString(22), day);
+		assertEquals("06", month);
+	}	
+		
+	@Test
+	public void testGetExifHeight() throws Exception {
+		File jpegFile = new File("C:/Users/Andy/Desktop/Image Job/test images/6-22-10--0010_tag.jpg");
+		Metadata metadata = JpegMetadataReader.readMetadata(jpegFile);
+		
+		// iterate through metadata directories
+		Iterator directories = metadata.getDirectoryIterator();
+		while (directories.hasNext()) {
+		    Directory directory = (Directory)directories.next();
+		    // iterate through tags and print to System.out
+
+		    Iterator tags = directory.getTagIterator();
+		    while (tags.hasNext()) {
+		        Tag tag = (Tag)tags.next();
+
+		        
+        		if (tag.getTagName().equalsIgnoreCase("GPS Altitude"))
+        		{
+        			//System.out.println(tag.getTagName());	 
+            		//System.out.println(tag.getDescription());	
+        			String[] split = tag.getDescription().split(" ");
+        			height = split[0];
+        			System.out.println(height);
+        			unitOfMeasure = split[1];
+        			System.out.println(unitOfMeasure);
+        		}
+        		
+		    }	    
+		}
+
+		assertEquals(Integer.toString(118), height);
+	}
+		
+	@Test
+	public void testCanParseLonCorrectly() throws Exception {
+		String degMinSec = "41\"43'23.88";
+		String[] a = (degMinSec.split("\""));
+		
+		Double deg = Double.parseDouble(a[0]);	
+		String[] b = (a[1].split("\'"));
+		Double min = Double.parseDouble(b[0]);
+		String c = b[1];
+		Double sec = Double.parseDouble(c);
+		
+		LatLonConvert latlon = new LatLonConvert(deg, min, sec);
+		Double decDeg = latlon.getDecimal();
+		
+		//double decDeg = 0;
+		assertEquals(41.7233000, decDeg,0);
+	}
+	
+	public void testCheckCordSystem() throws Exception {
+	
+		imageMetaData im = new imageMetaData();
+		
+		String fileDir = "C:/Users/Andy/Desktop/Image Job/test images/";
+		String fileName = "6-22-10--0010_tag.jpg";
+		
+		im.setFileDirectory(fileDir);
+		im.setFileName(fileName);
+		
+		assertEquals("C:/Users/Andy/Desktop/Image Job/test images/", im.getCurrentFileDirectory());
+		
+		im.setImageExifData();
+		
+		im.setDecimalLatitudeFromExif();
+		im.setDecimalLonitudeFromExif();
+		
+	}
+	
+}

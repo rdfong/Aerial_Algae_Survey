@@ -1,0 +1,135 @@
+package com.algae.excel.parser;
+
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+
+import javax.xml.bind.Element;
+import javax.xml.transform.Source;
+
+import org.apache.poi.hssf.eventusermodel.HSSFListener;
+import org.apache.poi.hssf.eventusermodel.HSSFRequest;
+import org.apache.poi.hssf.record.BOFRecord;
+import org.apache.poi.hssf.record.BoundSheetRecord;
+import org.apache.poi.hssf.record.LabelSSTRecord;
+import org.apache.poi.hssf.record.NumberRecord;
+import org.apache.poi.hssf.record.Record;
+import org.apache.poi.hssf.record.RowRecord;
+import org.apache.poi.hssf.record.SSTRecord;
+import org.apache.poi.hssf.usermodel.HSSFCell;
+import org.apache.poi.hssf.usermodel.HSSFRow;
+import org.apache.poi.hssf.usermodel.HSSFSheet;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.hssf.usermodel.examples.HSSFReadWrite;
+import org.apache.poi.poifs.filesystem.POIFSFileSystem;
+
+
+/**
+ * This example shows how to use the event API for reading a file.
+ */
+public class ExcelDataConnector{
+
+	private String docPath;
+	private POIFSFileSystem document;
+	private HSSFWorkbook workbook;
+
+	public ExcelDataConnector(String sDocPath) throws IOException
+	{
+	   this.docPath  = sDocPath;
+	   this.document = new POIFSFileSystem(new FileInputStream(docPath));
+	   this.workbook = new HSSFWorkbook(document);
+	}
+	
+	public ArrayList<String> getColNames(int sheetIndex)
+	{
+	   ArrayList<String> colNames = new ArrayList<String>();
+	   HSSFSheet sheet = this.workbook.getSheetAt(sheetIndex);
+	   HSSFRow   row   = sheet.getRow(0);
+	   HSSFCell  cell  = null;
+	   return getColElements(row, colNames);
+	}
+
+	/**
+	 * gets the number of rows
+	 * @param sheetIndex
+	 * @return number of rows not including the zero element (eg 8 not 9)
+	 */
+	public int getNumberOfRows(int sheetIndex) {
+		HSSFSheet sheet = this.workbook.getSheetAt(sheetIndex);
+		return sheet.getLastRowNum();
+	}
+
+	public ArrayList<String> getSpecificRowData(int rowOfInterest, int sheetIndex) {
+		HSSFSheet sheet = this.workbook.getSheetAt(sheetIndex); 
+		HSSFRow   row   = sheet.getRow(1);
+		HSSFCell  cell  = null;
+		ArrayList<String> colElements = new ArrayList<String>();
+		return getColElements(row, colElements);
+	}
+
+	/**
+	 * get the col elements for a given row
+	 * @param row
+	 * @param colElements
+	 * @return
+	 */
+	private ArrayList<String> getColElements(HSSFRow row,
+		ArrayList<String> colElements) {
+		HSSFCell cell;
+		int cols = 0;
+		if (row != null)
+		   {
+		      cols = row.getPhysicalNumberOfCells();
+		      for (int i = 0; i < cols; i++)
+		      {
+		         cell = row.getCell(i);
+		         if (cell != null)//&& cell.getCellType()) //== stringCell)
+		         {
+		        	if (cell.getCellType() == 1){
+		        	colElements.add(cell.getRichStringCellValue().getString());
+		        	}
+		        	else{
+		        		colElements.add(Double.toString(cell.getNumericCellValue()));
+		        	}
+		         }
+		      }
+		   }
+		return colElements;
+	}
+
+	public String parseAllRowsOnFirstSheet() {
+		int sheetIndex = 0;	
+		HSSFSheet sheet = this.workbook.getSheetAt(sheetIndex); 	
+		KmlParser kmlP = new KmlParser();
+		
+		CSVWriter csv = new CSVWriter();
+		
+		for (int i = 1; i <= getNumberOfRows(sheetIndex); i++) {
+			HSSFRow   row   = sheet.getRow(i);
+			HSSFCell  cell  = null;
+			ArrayList<String> colElements = new ArrayList<String>();	
+			
+			colElements = getColElements(row, colElements);
+			kmlP.createKMLEntry(colElements,csv);
+		}
+		kmlP.writeDomToFile();
+		try {
+			csv.writeToCSVFile();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		
+		return kmlP.getOutputDir();
+	}
+
+	public double getPitch(KmlParser kmlP) {	
+		return kmlP.calculatePitch();
+	}
+  
+	
+	
+}

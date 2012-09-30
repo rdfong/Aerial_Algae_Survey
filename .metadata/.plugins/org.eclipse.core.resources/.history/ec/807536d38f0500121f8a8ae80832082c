@@ -1,0 +1,22 @@
+package color;
+
+import static org.junit.Assert.*;
+
+import org.junit.Test;
+
+
+public class OtherOptionsTest {
+
+	@Test
+	public void testCanGetCorrectBoolReddoRedTrue() throws Exception {
+		OtherOptions op = new OtherOptions(null);
+		op.createOtherOptionsGUI();
+		
+		
+		
+		assertTrue("red do red was selected", op.getRedoRed());
+	}
+	
+	
+	
+}

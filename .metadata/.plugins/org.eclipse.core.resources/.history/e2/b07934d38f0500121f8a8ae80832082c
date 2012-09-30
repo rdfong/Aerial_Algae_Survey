@@ -1,0 +1,263 @@
+package main;
+
+import color.OtherOptions;
+import ij.IJ;
+import ij.ImagePlus;
+import ij.WindowManager;
+import ij.measure.ResultsTable;
+import ij.plugin.filter.Analyzer;
+
+
+public class ImageJResultsTable {
+
+	private static final String[] defaultHeadings = {"Day","Month","Year","C Height","Lat","Lon","Time Hour",
+		"Time Mins","Times Secs","Image Height","Image Width","Total Pixels (Of ROI)","Total Pixels (Max Area)",
+		"Black % Cover Big Area","Black % Cover Small Area","Area Of interest No Of Points (Polygon)",
+		"Helo Skid X/Y No Of Points (Line)","Color Used 0=R, G=1, B=2 ","Light Green Coverage %",
+		"Medium Green Coverage %", "Dark Green Coverage %", "Total Green Coverage %", "Red Coverage %",
+		"Total Algae Coverage %","Usr Total Green Algae Coverage Big%", "Usr Total Green Algae Coverage Small%",
+		"Usr Total Red Algae Coverage Big%", "Usr Total Red Algae Coverage Small%", "Usr New % Total Big%",
+		"Usr New % Total Small%","Min Thresh Values","Max Thresh Values","Min Green Color Thresh Values",
+		"Max Green Color Thresh Values","Min Red Color Thresh Values","Max Red Color Thresh Values","Other Band % Cover Small",
+		 "Other Band % Cover Big", "Min Other Color Thresh Values", "Max Other Color Thresh Values",
+		 "Final Green % Big","Final Red % Big","Final Brown % Big"};
+	
+	
+	private ImagePlus imp;
+	private imageMetaData imageProperties;
+	public ResultsTable resTable;
+	//private ExcelResultTable table;
+
+
+	private OtherOptions op;
+
+	public ImageJResultsTable(imageMetaData imageProperties, OtherOptions op) {
+		this.imageProperties = imageProperties;
+		
+		this.op = op;
+	}
+
+	public ResultsTable getResultsTable() {
+		return resTable;
+	}
+	
+	@SuppressWarnings("deprecation")
+	/**
+	 * Create the results table in imageJ and add all the needed information to it, then Save as an excel file
+	 * NOTE: you cant set a value then add a label for that col, the results table does not like that.
+	 */
+	public void createResultsTable() {
+
+		this.resTable = ResultsTable.getResultsTable();			
+		
+		if (resTable.getColumnHeading(ResultsTable.LAST_HEADING)==null){
+			resTable.reset();
+			setDefaultHeadings();
+		}
+		resTable.incrementCounter();
+		int rowNumber = resTable.getCounter()-1;
+		
+		if (rowNumber < 0)
+		{
+			IJ.log("NULL");
+		}
+		
+		addRow(rowNumber);	 
+	    
+	    resTable.addResults();
+	    resTable.updateResults();
+	    
+	    //IJ.error("Saving...", "Saving results to Excel press ok to continue");
+		//IJ.saveAs("Measurements", "");
+		
+		imp.getOriginalFileInfo();	
+		
+	}
+
+	
+	private void addRow(int rowNumber) {	
+		
+		resTable.addLabel("Meta Data", "");
+		resTable.setLabel(getMetaDataLabel(), rowNumber);	
+	    resTable.addValue(0, imageProperties.getiDay());    
+	    resTable.addValue(1, imageProperties.getiMonth());  
+	    resTable.addValue(2, imageProperties.getiYear());  
+	    resTable.addValue(3, imageProperties.getiHeloHeight()); 
+	    resTable.addValue(4, imageProperties.getdLat());
+	    resTable.addValue(5, -imageProperties.getdLon());		    
+	    resTable.addValue(6, imageProperties.getiHour());  
+	    resTable.addValue(7, imageProperties.getiMinutes());
+	    resTable.addValue(8, imageProperties.getiSeconds()); 
+	    resTable.addValue(9, imageProperties.getImageHeight());
+	    resTable.addValue(10, imageProperties.getImageWidth());
+	    resTable.addValue(11, imageProperties.getiPixelCount());
+	    resTable.addValue(12, imageProperties.getPixelCC());
+	    //CLAHE process
+	    resTable.addValue(13, imageProperties.getiPercentCoverBlack());  
+	    resTable.addValue(14, imageProperties.getiPercentCoverBlackSmall());    
+	    resTable.addValue(15, imageProperties.getPolygonNumberOfPoints());  	    
+	    resTable.addValue(16, imageProperties.getHeloLineNumberOfPoints());   
+	    resTable.addValue(17, 0);
+	    
+	    //color processing
+
+	    resTable.addValue(18, imageProperties.getLightGreenPercentCoverage());    
+	    resTable.addValue(19,  imageProperties.getGreenPercentCoverage());
+	    resTable.addValue(20,  imageProperties.getDarkGreenPercentCoverage());   
+	    resTable.addValue(21, imageProperties.getTotalGreenPercentCoverage());    
+	    //add red to results BIG AREA
+	    resTable.addValue(22, imageProperties.getRedPercentCoverage());    
+	    //total percent coverage
+	    resTable.addValue(23, imageProperties.getTotalAlgaePercentCoverage());    
+	    //user corrected values
+	    resTable.addValue(24, imageProperties.getUserSetGreenCoverageBig());    
+	    resTable.addValue(25, imageProperties.getUserSetGreenCoverageSmall());    
+	    resTable.addValue(26, imageProperties.getUserSetRedCoverageBig());    
+	    resTable.addValue(27, imageProperties.getUserSetRedCoverageSmall());    
+	    double newPerCoverBig =  imageProperties.getUserSetGreenCoverageBig()+imageProperties.getUserSetRedCoverageBig();
+	    resTable.addValue(28, newPerCoverBig);    
+	    double newPerCoverSmall =  imageProperties.getUserSetGreenCoverageSmall()+imageProperties.getUserSetRedCoverageSmall();
+	    resTable.addValue(29, newPerCoverSmall);    
+	    //add thresh values BW
+	    resTable.addValue(30, imageProperties.getMinThreshold());	    
+	    resTable.addValue(31, imageProperties.getMaxThreshold());    
+	    //add Green thresh values color
+	    resTable.addValue(32, imageProperties.getMinColorGreenThreshold());    
+	    resTable.addValue(33, imageProperties.getMaxColorGreenThreshold());    
+	    //add red thresh values color
+	    resTable.addValue(34, imageProperties.getMinColorRedThreshold());    
+	    resTable.addValue(35, imageProperties.getMaxColorRedThreshold());    
+	    //add user set band % cover
+	    resTable.addValue(36, imageProperties.getUserSetOtherCoverageSmall());   
+	    resTable.addValue(37, imageProperties.getUserSetOtherCoverageBig());    
+	    //add other thresh values color
+	    resTable.addValue(38, imageProperties.getMinColorOtherThreshold());    
+	    resTable.addValue(39, imageProperties.getMaxColorOtherThreshold());
+	    
+	    //Really find out what things mean and set values BIG AREA
+	    resTable.addValue(40, calulateFinalGreen());
+	    //Really find out what things mean and set values BIG AREA
+	    resTable.addValue(41, calulateFinalRed());
+	    resTable.addValue(42, calulateFinalBrown());
+	}
+
+	private double calulateFinalBrown() {
+		double totalPercentBrownBig=0;
+		String color = "Brown";		
+		totalPercentBrownBig = getFinalCoverageBasedOnColor(totalPercentBrownBig,color);
+		
+		return totalPercentBrownBig;
+	}
+
+	private double calulateFinalRed() {
+		double totalPercentRedBig=0;
+		String color = "Red";		
+		totalPercentRedBig = getFinalCoverageBasedOnColor(totalPercentRedBig,color);
+		
+		return totalPercentRedBig;
+	}
+
+	/**
+	 * @param totalPercentVar
+	 * @param color
+	 * @return
+	 */
+	private double getFinalCoverageBasedOnColor(double totalPercentVar,String color) {
+		if (op!=null)
+		{
+		if (op.getGreenIsString().contentEquals(color))
+		{
+			//get green percent and add it to the total
+			totalPercentVar = totalPercentVar+imageProperties.getUserSetGreenCoverageBig();
+		}
+		if (op.getRedIsString().contentEquals(color))
+		{	
+			//get red percent and add it to the total
+			totalPercentVar = totalPercentVar+imageProperties.getUserSetRedCoverageBig();
+		}
+		if (op.getOtherIsString().contentEquals(color))
+		{	
+			//get red percent and add it to the total
+			totalPercentVar = totalPercentVar+imageProperties.getUserSetOtherCoverageBig();
+		}
+		return totalPercentVar;
+		}
+		else
+		{	
+			return 0;
+		}
+	}
+
+	private double calulateFinalGreen() {
+		double totalPercentGreenBig=0;
+		String color = "Green";		
+		totalPercentGreenBig = getFinalCoverageBasedOnColor(totalPercentGreenBig,color);
+		
+		return totalPercentGreenBig;
+	}
+
+	private void setDefaultHeadings() {
+		for(int i=0; i<defaultHeadings.length; i++)
+		{
+			String heading = defaultHeadings[i];
+			resTable.setHeading(i, heading);
+		}
+	}
+
+	/**
+	 * @return label containing all information about image eg points of line and poly and image location and name.
+	 */
+	String getMetaDataLabel() {
+		StringBuilder label = new StringBuilder();
+		label.append(imageProperties.getCurrentFileDirectory());
+		label.append("^");
+		label.append(imageProperties.getCurrentFileName());
+		label.append("^");
+		label.append(createXPointsString(imageProperties.getPolygonXPoints()));
+		label.append("^");
+		label.append(createYPointsString(imageProperties.getPolygonYPoints()));
+		label.append("^");
+		label.append(createXPointsString(imageProperties.getHeloLineXPoints()));
+		label.append("^");
+		label.append(createYPointsString(imageProperties.getHeloLineYPoints()));
+		label.append("^");
+		label.append(createXPointsString(imageProperties.getHorizonLineXPoints()));
+		label.append("^");
+		label.append(createYPointsString(imageProperties.getHorizonLineYPoints()));
+		label.append("^");
+		label.append(createXPointsString(imageProperties.getBigPolygonXPoints()));
+		label.append("^");
+		label.append(createYPointsString(imageProperties.getBigPolygonYPoints()));	
+		label.append("^");
+		if (op == null){
+			label.append("NA");
+		}
+		else{
+		label.append(op.getCommentIsString());
+		}
+		return label.toString();
+	}
+	private String createXPointsString(int[] xPoints) {
+		StringBuilder xString = new StringBuilder();
+		xString.append("X Points:");
+		for (int i = 0; i < xPoints.length; i++) {
+		xString.append(Integer.toString(xPoints[i]));	
+		xString.append(":");
+		}	
+		
+		return xString.toString();
+	}
+	
+	private String createYPointsString(int[] yPoints) {	
+		StringBuilder yString = new StringBuilder();
+		yString.append("Y Points:");
+		for (int i = 0; i < yPoints.length; i++) {
+		yString.append(Integer.toString(yPoints[i]));	
+		yString.append(":");
+		}			
+		return yString.toString();
+	}
+	
+
+	
+}

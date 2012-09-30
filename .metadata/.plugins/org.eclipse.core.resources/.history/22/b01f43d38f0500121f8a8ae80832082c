@@ -1,0 +1,88 @@
+package old;
+
+import static org.junit.Assert.*;
+
+import java.util.ArrayList;
+
+import org.junit.Test;
+
+import com.algae.excel.parser.ExcelDataConnector;
+import com.algae.excel.parser.KmlParser;
+
+
+public class KmlParserTest {
+
+@Test
+public void testGetCorrectImageName() throws Exception {
+	String fileName = ("C:\\Users\\Andy\\workspace\\AlgaeDataConnector\\10-25-10--0008.xls");
+	ExcelDataConnector ex = new ExcelDataConnector(fileName);
+	
+	int rowOfInterest= 1;
+	ArrayList<String> colElements = ex.getSpecificRowData(rowOfInterest,0);
+	
+	
+}
+	
+@Test
+public void testCanGetPitchFromHorz() throws Exception {
+	String horzX = "X Points:1614:3708:0:0:";	
+    String horzY = "Y Points:1698:1692:0:0:";
+    
+    KmlParser kml = new KmlParser();
+    
+    double estPitch = kml.getEstPitch(horzX, horzY);
+    
+    
+
+}
+
+@Test
+public void testCanGetPitchFromHorzJustNum() throws Exception {
+	String horzX = "1614";	
+    String horzY = "1698";
+    
+    KmlParser kml = new KmlParser();
+    
+    double estPitch = kml.getEstPitch(horzX, horzY);
+}
+
+@Test
+public void testEstArea() throws Exception {
+	double estPitch = 40.5;
+	int height = 124;
+    
+    KmlParser kml = new KmlParser();
+    
+    double estArea = kml.getEstArea(estPitch, height);
+    
+    assertEquals(38.9134, estArea,0.0001);
+    
+}
+
+@Test
+public void testEstArea2() throws Exception {
+	double estPitch = 60;
+	int height = 124;
+    
+    KmlParser kml = new KmlParser();
+    
+    double estArea = kml.getEstArea(estPitch, height);
+    
+    assertEquals(83.0048097, estArea,0.0001);
+    
+}
+
+@Test
+public void testEstArea3() throws Exception {
+	double estPitch = 55;
+	int height = 200;
+    
+    KmlParser kml = new KmlParser();
+    
+    double estArea = kml.getEstArea(estPitch, height);
+    
+    assertEquals(166.2399966, estArea,0.0001);
+    
+}
+
+}

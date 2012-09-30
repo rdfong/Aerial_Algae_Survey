@@ -1,0 +1,321 @@
+package color;
+
+import ij.IJ;
+import ij.ImagePlus;
+import ij.WindowManager;
+import ij.gui.NewImage;
+import ij.gui.PolygonRoi;
+import ij.gui.Roi;
+import ij.process.ImageProcessor;
+import ij.process.ImageStatistics;
+
+import java.awt.Rectangle;
+import java.util.ArrayList;
+import java.util.Arrays;
+
+import main.imageMetaData;
+
+import preferences.GetPrefs;
+import threshold.ThresholdAdjust;
+
+/**
+ * Full HSV processing showing the results
+ * @author Andy
+ *
+ */
+public class GreenAndRedProcessing {
+
+	private static ImagePlus imp;
+	private static ImagePlus hueIm;
+	private static ImagePlus satIm;
+	private static ImagePlus brightIm;
+	private static ImagePlus redImageStatsIm;
+	private static ImagePlus blueImageStatsIm;
+	private static ImagePlus greenImageStatsIm;
+	private static ImageProcessor satIp;
+	private static ImageProcessor brightIp;
+	public static GetPrefs prefs = new GetPrefs();
+	private static int[] ueHueBounds;
+	private static int[] ueSatBounds;
+	private static int[] ueBrightBounds;
+	private static ImageStatistics redImageStats;
+	private static ImageStatistics greenImageStats;
+	private static ImageStatistics totalImageStats;
+	private static double totalGreenPerCoverSmall;
+	private static double redPerCoverSmall;
+	private static double lightGreenPerCoverSmall;
+	private static double darkGreenPerCoverSmall;
+	private static double middleGreenPerCoverSmall;
+	private static ThresholdAdjust ThreshHolderGUI;
+	private static int pixelCountSmall;
+	private static int pixelCountLarge;
+	private static double totalGreenPerCover;
+	private static double redPerCover;
+	private static double lightGreenPerCover;
+	private static double darkGreenPerCover;
+	private static double middleGreenPerCover;
+	
+	
+	public static void setColorPercentCovers() {
+		int[] redHist = redImageStats.histogram;
+		int[] greenHist = greenImageStats.histogram;
+		//int[] totalHist = totalImageStats.histogram;
+		
+		int greenPixels = 0;
+		int redPixels = 0;
+		//int totalPixelsGreen = 0;
+		//int totalPixelsRed = 0;
+		int lightGreenPixels =0;
+		int darkGreenPixels =0;
+		int middleGreenPixels =0;
+		
+		for (int i = 0; i <= 255; i++) 
+		{
+			//totalPixelsGreen = totalPixelsGreen+greenHist[i];
+		    //totalPixelsRed = totalPixelsRed+redHist[i];
+			if(i >0)
+			{
+			greenPixels = greenPixels+greenHist[i];
+			redPixels = redPixels+redHist[i];
+			}
+			if((i>=35) &&(i<=60)){
+				lightGreenPixels = lightGreenPixels+ greenHist[i];	
+			}
+			if((i>=61) &&(i<=100)){
+				middleGreenPixels = middleGreenPixels+greenHist[i];
+			}
+			if((i>=101) &&(i<=180)){
+				darkGreenPixels = darkGreenPixels+greenHist[i];
+			}
+			
+		}
+		
+		totalGreenPerCoverSmall = ((double) greenPixels /(double)pixelCountSmall)*100;  
+		redPerCoverSmall = 	((double) redPixels /(double)pixelCountSmall)*100;
+		lightGreenPerCoverSmall = ((double) lightGreenPixels /(double)pixelCountSmall)*100;
+		darkGreenPerCoverSmall = ((double) darkGreenPixels /(double)pixelCountSmall)*100;
+		middleGreenPerCoverSmall = ((double) middleGreenPixels /(double)pixelCountSmall)*100;
+		
+		totalGreenPerCover = ((double) greenPixels /(double)pixelCountLarge)*100;  
+		redPerCover = 	((double) redPixels /(double)pixelCountLarge)*100;
+		lightGreenPerCover = ((double) lightGreenPixels /(double)pixelCountLarge)*100;
+		darkGreenPerCover = ((double) darkGreenPixels /(double)pixelCountLarge)*100;
+		middleGreenPerCover = ((double) middleGreenPixels /(double)pixelCountLarge)*100;
+		
+	}
+	public double getlGreenPerCoverSmall() {
+		return lightGreenPerCoverSmall;
+	}
+	
+	public double getdGreenPerCoverSmall(){
+		return darkGreenPerCoverSmall;
+	}
+	
+	public double getMGreenPerCoverSmall() {
+		return middleGreenPerCoverSmall;
+	}
+	
+	public double getRedPerCoverSmall() {
+		return redPerCoverSmall;
+	}
+	
+	public double getTotalGreenPerCoverSmall() {
+		return totalGreenPerCoverSmall;
+	}
+	
+	public static void showGreenAndRedPixels(imageMetaData imageProperties) {
+		
+		pixelCountSmall = imageProperties.getiPixelCount();
+		
+		pixelCountLarge = imageProperties.getPixelCC();
+		
+		imp = WindowManager.getCurrentImage();
+		
+		HSB_Stack_Splitter.splitStack(imp,false,0);
+		
+		hueIm = HSB_Stack_Splitter.getHueIm();
+		
+		satIm = HSB_Stack_Splitter.getSatIm();
+		brightIm = HSB_Stack_Splitter.getBrightIm();
+		
+		ImageProcessor hueIp = hueIm.getProcessor(); 
+		
+		hueIm.setTitle("RGB (hue)");
+		hueIm.show();
+		
+		//brightIm.show();
+		//satIm.show();
+		
+		setUserSpecifiedColorBoundaries();
+		
+		
+		
+		
+		Rectangle r = hueIp.getRoi();
+
+		//Mask Processing
+		//ImageProcessor Mask = hueIp.getMask();
+		//int[] histMask = Mask.getHistogram();
+		//byte[] maskPixels = (byte[])Mask.getPixels();
+		
+		int offset, i;
+		byte[] huePixels = (byte[])hueIp.getPixels();
+		int width = hueIp.getWidth();
+		
+		
+		satIp = satIm.getProcessor();
+		byte[] satPixels = (byte[])satIp.getPixels();
+	
+		brightIp = brightIm.getProcessor();
+		byte[] brightPixels = (byte[])brightIp.getPixels();
+		
+		ImagePlus newGImp = NewImage.createByteImage("Green Result", r.width, r.height, 1, 1);
+		ImagePlus newRImp = NewImage.createByteImage("Red Result", r.width, r.height, 1, 1);
+		
+		newGImp.show();
+		newRImp.show();
+		
+		ImageProcessor newGIp = newGImp.getProcessor();
+		byte[] newIpGPixels = (byte[]) newGIp.getPixels();
+		
+		ImageProcessor newRIp = newRImp.getProcessor();
+		byte[] newIpRPixels = (byte[]) newRIp.getPixels();
+		
+		int gs = (int) prefs.getGreenBoundaryStart();
+		int ge = (int) prefs.getGreenBoundaryEnd();
+		int dgs = (int) prefs.getDarkGreenBoundaryStart();
+		int dge = (int) prefs.getDarkGreenBoundaryEnd();
+		int lgs = (int) prefs.getLightGreenBoundaryStart();
+		int lge = (int) prefs.getLightGreenBoundaryEnd();
+		int rs = (int) prefs.getRedBoundary1Start();
+		int re = (int) prefs.getRedBoundary1End();
+		int rrs = (int) prefs.getRedBoundary2Start();
+		int rre = (int) prefs.getRedBoundary2End();
+		
+		int satmin = 10;
+		int satmax = 256;
+		int brightmin = 10;
+		int brightmax = 250;
+		
+		for (int y=r.y; y<(r.y+r.height); y++) {
+			offset = y*width;
+				for (int x=r.x; x<(r.x+r.width); x++) {
+					i = offset + x;
+						
+							int satPixVal = satPixels[i] & 0xff;
+							int brightPixVal = brightPixels[i] & 0xff;
+						
+							if (((satPixVal > satmin) && (satPixVal < satmax)) && ((brightPixVal > brightmin) && (brightPixVal < brightmax)))
+							{														
+								int huePixVal = huePixels[i] & 0xff;
+								
+								if ((huePixVal >= gs) && (huePixVal <= ge))
+								{									
+									newIpGPixels[i] = (byte) (huePixVal);
+								}
+								else if ((huePixVal >= lgs) && (huePixVal <= lge)) 
+								{	
+									newIpGPixels[i] = (byte) (huePixVal);	
+								}
+								else if ((huePixVal >= dgs) && (huePixVal <= dge)) {
+									
+									newIpGPixels[i] = (byte) (huePixVal);
+								}
+								else if ((huePixVal >= rs) && (huePixVal <= re))
+								{
+									newIpRPixels[i] = (byte) (huePixVal);
+								}
+								else if ((huePixVal >= rrs) && (huePixVal <= rre)) 
+								{
+									newIpRPixels[i] = (byte) (huePixVal);	
+								}	
+							}
+							newGImp.updateAndDraw();
+							newRImp.updateAndDraw();
+							
+		}
+		}
+		newRImp.updateAndDraw();
+		//IJ.run(newRImp, "HSV", "");
+		newRImp.show();
+		
+		imageProperties.getSavedRoiFromTitle("Red Result");
+		
+		newGImp.updateAndDraw();
+		//IJ.run(newGImp, "HSV", "");
+		newGImp.show();
+		
+		imageProperties.getSavedRoiFromTitle("Green Result");
+		
+		redImageStats = newRImp.getStatistics();
+		greenImageStats = newGImp.getStatistics();
+		totalImageStats = hueIm.getStatistics();
+		
+		//ThreshHolderGUI = new ThresholdAdjust(imageProperties);	
+		
+		setColorPercentCovers();
+		
+		imageProperties.setPercentageRedAndGreenCoverSmall(redPerCoverSmall,lightGreenPerCoverSmall,middleGreenPerCoverSmall,darkGreenPerCoverSmall,totalGreenPerCoverSmall,totalGreenPerCoverSmall+redPerCoverSmall);
+		
+		imageProperties.setPercentageRedAndGreenCover(redPerCover,lightGreenPerCover,middleGreenPerCover,darkGreenPerCover,totalGreenPerCover,totalGreenPerCover+redPerCover);
+		
+		IJ.log("-------****Small Area*****-------");
+		IJ.log(imageProperties.getCurrentFileName());
+		IJ.log("-------*********-------");
+		IJ.log("Dark Green:" +Double.toString(imageProperties.getDarkGreenPercentCoverageSmall()));
+		IJ.log("Green:" +Double.toString(imageProperties.getGreenPercentCoverageSmall()));
+		IJ.log("Light Green:" +Double.toString(imageProperties.getLightGreenPercentCoverageSmall()));
+		IJ.log("Total Green:" +Double.toString(imageProperties.getTotalGreenPercentCoverageSmall()));
+		IJ.log("Red:" +Double.toString(imageProperties.getRedPercentCoverageSmall()));
+		IJ.log("TOTAL:" +Double.toString(imageProperties.getTotalAlgaePercentCoverageSmall()));
+		
+		IJ.log("-------****Large Area*****-------");
+		IJ.log(imageProperties.getCurrentFileName());
+		IJ.log("-------*********-------");
+		IJ.log("Dark Green:" +Double.toString(imageProperties.getDarkGreenPercentCoverage()));
+		IJ.log("Green:" +Double.toString(imageProperties.getGreenPercentCoverage()));
+		IJ.log("Light Green:" +Double.toString(imageProperties.getLightGreenPercentCoverage()));
+		IJ.log("Total Green:" +Double.toString(imageProperties.getTotalGreenPercentCoverage()));
+		IJ.log("Red:" +Double.toString(imageProperties.getRedPercentCoverage()));
+		IJ.log("TOTAL:" +Double.toString(imageProperties.getTotalAlgaePercentCoverage()));
+		
+		
+		
+		
+		
+   }
+	/**
+	 * 
+	 */
+	private static void setUserSpecifiedColorBoundaries() {
+		Roi[] roiList = ColorPicker.getChosenAlgaeRois();
+		
+		if (roiList !=null){
+			ueBrightBounds = new int[roiList.length];
+			ueHueBounds = new int[roiList.length];
+			ueSatBounds = new int[roiList.length];
+			
+			for (int i = 0; i < roiList.length; i++) {
+				Roi roiPoint = roiList[i];
+				Rectangle roiRect = roiPoint.getBounds();
+				
+				
+				int[] huePixVal = hueIm.getPixel(roiRect.x, roiRect.y);
+				int[] satPixVal = satIm.getPixel(roiRect.x, roiRect.y);
+				int[] brightPixVal = brightIm.getPixel(roiRect.x, roiRect.y);
+				
+				//IJ.log(Integer.toString(roiRect.x)+ ":" + Integer.toString(roiRect.y)+":"+ Integer.toString(roiRect.width)+":");
+				ueHueBounds[i] = huePixVal[0]; 
+				ueSatBounds[i] = satPixVal[0]; 
+				ueBrightBounds[i] = brightPixVal[0]; 
+			}
+			Arrays.sort(ueHueBounds);  
+			IJ.log("Algae Minimum = " + ueHueBounds[0]);  
+			IJ.log("Algae Maximum = " + ueHueBounds[ueHueBounds.length-1]);  
+		}
+	}
+		
+		
+	
+
+}

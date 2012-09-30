@@ -1,0 +1,258 @@
+package color;
+
+import java.awt.Polygon;
+import java.awt.Rectangle;
+
+import main.imageMetaData;
+
+import ij.IJ;
+import ij.ImagePlus;
+import ij.gui.HistogramWindow;
+import ij.gui.PolygonRoi;
+import ij.gui.Roi;
+import ij.process.ImageProcessor;
+import ij.process.ImageStatistics;
+import preferences.*;
+@Deprecated
+public class HSVProcessing {
+	
+	private static int numberOfBlackPixels;
+	private static int numberOfWhitePixels;
+	private static ImagePlus hueIm;
+	private static int redPixels;
+	private static int greenPixels;
+	
+	public static GetPrefs prefs = new GetPrefs();
+	private static ImagePlus satIm;
+	private static ImagePlus brightIm;
+	private static ImageProcessor satIp;
+	private static ImageProcessor brightIp;
+	private static int lightGreenPixels;
+	private static int darkGreenPixels;
+	
+	/**
+	 * get number of black or white invalid pixels, to remove from latter calculations
+	 * @param showBol 
+	 * @param imageProperties 
+	 * @param brightIm 
+	 * @param satIm 
+	 * @param hueIm 
+	 */
+	public static void getNumberOfInvalidPixels(boolean showBol, imageMetaData imageProperties) {
+		if (imageProperties.isPolySet() == true){
+		try {     	
+		//get hsv images image		
+		hueIm = HSB_Stack_Splitter.getHueIm();
+		satIm = HSB_Stack_Splitter.getSatIm();
+		brightIm = HSB_Stack_Splitter.getBrightIm();
+		
+		showBol =true;
+		if (showBol == true){
+			hueIm.show();
+			imageProperties.getSavedAndDisplayPolygonROI();
+			satIm.show();
+			brightIm.show();
+			new HistogramWindow(hueIm);
+		}
+	
+		ImageProcessor hueIp = hueIm.getProcessor(); 
+		
+		Rectangle r = hueIp.getRoi();
+		
+		//Mask Processing
+		ImageProcessor Mask = hueIp.getMask();
+		int[] histMask = Mask.getHistogram();
+		byte[] maskPixels = (byte[])Mask.getPixels();
+		
+		int offset, i;
+		byte[] huePixels = (byte[])hueIp.getPixels();
+		int width = hueIp.getWidth();
+		
+		
+		satIp = satIm.getProcessor();
+		byte[] satPixels = (byte[])satIp.getPixels();
+	
+		brightIp = brightIm.getProcessor();
+		byte[] brightPixels = (byte[])brightIp.getPixels();
+		
+		numberOfBlackPixels =0;
+		numberOfWhitePixels =0;
+		
+		for (int y=r.y; y<(r.y+r.height); y++) {
+			offset = y*width;
+				for (int x=r.x; x<(r.x+r.width); x++) {
+					i = offset + x;
+					
+					int maskPixVal = maskPixels[i] & 0xff;
+					if (maskPixVal ==255){
+					
+						int huePixVal = huePixels[i] & 0xff;
+					
+					// if the pixel is 0 value store value
+						if (huePixVal == 0)
+						{	
+							int satPixVal = satPixels[i] & 0xff;
+						
+							if ((satPixVal <= 60) && (satPixVal >= 250))
+							{
+								int brightPixVal = brightPixels[i] & 0xff;
+								
+								if (brightPixVal <=10)
+								{							
+									//IJ.log("hue Y:"+Integer.toString(y)+"X:"+Integer.toString(y));	
+									numberOfBlackPixels++;
+								}
+								else if(brightPixVal < 250){
+									numberOfWhitePixels++;
+								}
+							}
+						}
+						
+					
+				}
+		}
+				}
+		IJ.log("Black Pixels:"+Integer.toString(numberOfBlackPixels));
+		IJ.log("White Pixels:"+Integer.toString(numberOfWhitePixels));
+		}
+		 catch (NullPointerException e) {
+		   IJ.log("ERROR NO AREA SELECTED!: " 
+		                        + e.getMessage());		    	
+		 }		
+		
+		}	
+		else{
+			 IJ.log("ERROR NO AREA SELECTED!");
+		}
+	}
+	public static int getNumberOfRedPixels() {
+		int[] hhist = getHueImageStats().histogram;
+		
+		redPixels = 0;
+		
+		//red needs two as it either side of 360 degrees
+		for (int i = 0; i <= prefs.getRedBoundary1End(); i++) 
+		{
+			redPixels = redPixels+hhist[i];
+		}
+		
+		for (int i = (int) prefs.getRedBoundary2Start(); i < hhist.length; i++) 
+		{
+			redPixels = redPixels+hhist[i];
+		}		
+		
+		if (redPixels < 0 )
+		{
+			redPixels =0;
+		}
+		
+		//needs to be different so that the number of pixels is reflected in the log
+		Integer redPixels1 = redPixels - (numberOfBlackPixels+numberOfWhitePixels);
+		
+		IJ.log("Red Pixels No:"+ Integer.toString(redPixels1));
+		return redPixels;
+	}
+	
+	private static ImageStatistics getBrightImageStats() {	
+			ImageStatistics brightImageStats = brightIm.getStatistics();
+			return brightImageStats;
+	}
+	private static ImageStatistics getSatImageStats() {
+		ImageStatistics satImageStats = satIm.getStatistics();
+		return satImageStats;
+	}
+	public static int getWhitePixelsNo() {
+		return numberOfWhitePixels;	}
+	
+	public static int getBlackPixelsNo(){
+		return numberOfBlackPixels;	}
+	
+	public static ImageStatistics getHueImageStats() {
+		
+		ImageStatistics hueImageStats = hueIm.getStatistics();
+		return hueImageStats;
+	}
+	
+	public static int getNumberOfPixels(){
+		return getHueImageStats().pixelCount;
+	}
+
+	public static int getNumberOfGreenPixels() {
+		
+		int[] hist = getHueImageStats().histogram;
+		
+		greenPixels = 0;
+		
+		for (int i = (int) prefs.getGreenBoundaryStart(); i <= prefs.getGreenBoundaryEnd(); i++) 
+		{
+			greenPixels = greenPixels+hist[i];
+		}
+
+		if (greenPixels < 0 )
+		{
+			greenPixels =0;
+		}
+		
+		IJ.log("Green Pixels No:"+ Integer.toString(greenPixels));
+		return greenPixels;
+	}
+
+	public static int getNumberOfLightGreenPixels() {
+		
+		int[] hist = getHueImageStats().histogram;
+		
+		lightGreenPixels = 0;
+		
+		for (int i = (int) prefs.getLightGreenBoundaryStart(); i <= prefs.getLightGreenBoundaryEnd(); i++) 
+		{
+			lightGreenPixels = lightGreenPixels+hist[i];
+		}
+
+		if (lightGreenPixels < 0 )
+		{
+			lightGreenPixels =0;
+		}
+		
+		IJ.log("Light Green Pixels No:"+ Integer.toString(lightGreenPixels));
+		return lightGreenPixels;
+	}
+
+	public static int getNumberOfDarkGreenPixels() {
+		int[] hist = getHueImageStats().histogram;
+		
+		darkGreenPixels = 0;
+		
+		for (int i = (int) prefs.getDarkGreenBoundaryStart(); i <= prefs.getDarkGreenBoundaryEnd(); i++) 
+		{
+			darkGreenPixels = darkGreenPixels+hist[i];
+		}
+
+		if (darkGreenPixels < 0 )
+		{
+			darkGreenPixels =0;
+		}
+		
+		IJ.log("Dark Green Pixels No:"+ Integer.toString(darkGreenPixels));
+		return darkGreenPixels;
+	}
+
+	public static int getNumberOfBeachPixels() {
+		int[] hist = getHueImageStats().histogram;
+		
+		int beachPixels = 0;
+		
+		for (int i = 7; i <= 49; i++) 
+		{
+			beachPixels = beachPixels+hist[i];
+		}
+
+		if (beachPixels < 0 )
+		{
+			beachPixels =0;
+		}
+		
+		IJ.log("Beach Pixels No:"+ Integer.toString(beachPixels));
+		return beachPixels;
+	}
+	
+}

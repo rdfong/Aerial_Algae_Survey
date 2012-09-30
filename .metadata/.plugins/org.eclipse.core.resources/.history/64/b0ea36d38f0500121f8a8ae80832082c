@@ -1,0 +1,29 @@
+import static org.junit.Assert.*;
+import ij.WindowManager;
+
+
+import main.imageProcessing;
+
+import org.junit.Test;
+
+/**
+ * 
+ */
+
+/**
+ * @author Andy
+ *
+ */
+public class imageProcessingTest {
+
+	/**
+	 * Test method for {@link imageProcessing#createRGBSplit(ij.ImagePlus)}.
+	 */
+	@Test
+	public void testCreateRGBSplit() {
+		
+		WindowManager.getImageCount();
+		fail("need method");
+	}
+	
+}

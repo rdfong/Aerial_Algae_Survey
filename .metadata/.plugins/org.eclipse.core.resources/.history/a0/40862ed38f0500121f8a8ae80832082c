@@ -1,0 +1,91 @@
+package color;
+
+import ij.IJ;
+import ij.gui.Roi;
+import ij.plugin.frame.RoiManager;
+
+import java.awt.List;
+import java.awt.Rectangle;
+
+public class ColorPicker {
+	private RoiManager roiMan;
+	private static Roi[] roiListNonAlgae;
+	private static Roi[] roiListAlgae;
+
+	public static Roi[] getChosenAlgaeRois() {
+		return roiListAlgae;
+	}
+	
+	public static Roi[] getChosenNonAlgaeRois() {
+		return roiListNonAlgae;
+	}
+	
+	public void setupAlgaeColorPicker(int click) {
+		
+		click = click+1;
+		
+		if (click == 1)
+		{
+		    IJ.setTool("point");    
+		    IJ.run("ROI Manager...");
+		    roiMan = RoiManager.getInstance();
+		}
+		else
+		{
+		
+			if (roiMan == null)
+			{    	
+		    	IJ.error("Please populate ROI Manager with point ROIs");
+		    }
+			else
+			{
+				IJ.log("Algae Colors Saved...");
+				int no_p = roiMan.getCount();
+				List listRoi = roiMan.getList();
+				roiListAlgae = roiMan.getRoisAsArray();
+			
+			
+			/*
+				for (int i = 0; i < roiList.length; i++) {
+					Roi roiPoint = roiList[i];
+					Rectangle a = roiPoint.getBounds();
+					
+					
+					//IJ.log(Integer.toString(a.x)+ ":" + Integer.toString(a.y)+":"+ Integer.toString(a.width)+":"+Integer.toString(click));
+				}
+				*/
+			click = 0;	
+			}
+		}
+		
+	}
+
+	public void setupNonAlgaeColorPicker(int click) {
+		click = click+1;
+		
+		if (click == 1)
+		{
+		    IJ.setTool("point");    
+		    IJ.run("ROI Manager...");
+		    roiMan = RoiManager.getInstance();
+		}
+		else
+		{
+		
+			if (roiMan == null)
+			{    	
+		    	IJ.error("Please populate ROI Manager with point ROIs");
+		    }
+			else
+			{
+				IJ.log("Non Algae Colors Saved...");
+				int no_p1 = roiMan.getCount();
+				List listRoi1 = roiMan.getList();
+				roiListNonAlgae = roiMan.getRoisAsArray();
+				click = 0;	
+			}
+		}
+		
+	}
+	
+}

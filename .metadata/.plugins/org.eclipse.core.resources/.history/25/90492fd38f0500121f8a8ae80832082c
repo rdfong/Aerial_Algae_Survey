@@ -1,0 +1,86 @@
+package color;
+
+import ij.IJ;
+import ij.ImagePlus;
+import ij.ImageStack;
+import ij.process.ColorProcessor;
+
+
+
+/** Splits an RGB image or stack into three 8-bit grayscale images or stacks (hue, saturation and brightness). */
+
+public class HSB_Stack_Splitter {
+    private static ImagePlus hueIm;
+	private static ImagePlus satIm;
+	private static ImagePlus brightIm;
+	HSVProcessing data = new HSVProcessing();
+
+	public static String splitStack(ImagePlus imp, boolean filterBol, double filterValue) {
+         
+		if (filterBol ==true){
+			IJ.showProgress(0.0);
+			IJ.run(imp, "Median...", "radius="+Double.toString(filterValue));
+			IJ.showProgress(1.0);
+		}
+		
+		
+		 int w = imp.getWidth();
+         int h = imp.getHeight();
+         ImageStack hsbStack = imp.getStack();
+         ImageStack hueStack = new ImageStack(w,h);
+         ImageStack satStack = new ImageStack(w,h);
+         ImageStack brightStack = new ImageStack(w,h);
+         byte[] hue,s,b;
+         ColorProcessor cp;
+         int n = hsbStack.getSize();
+         for (int i=1; i<=n; i++) {
+             IJ.showStatus(i+"/"+n);
+             hue = new byte[w*h];
+             s = new byte[w*h];
+             b = new byte[w*h];
+             cp = (ColorProcessor)hsbStack.getProcessor(1);
+             cp.getHSB(hue,s,b);
+             hsbStack.deleteSlice(1);
+            //System.gc();
+             hueStack.addSlice(null,hue);
+             satStack.addSlice(null,s);
+             brightStack.addSlice(null,b);
+             IJ.showProgress((double)i/n);
+        }
+        String title = imp.getTitle();
+        //imp.hide();
+        setHueIm(new ImagePlus(title+" (hue)",hueStack));
+        setSatIm(new ImagePlus(title+" (saturation)",satStack));
+        setBrightIm(new ImagePlus(title+" (brightness)",brightStack));
+     
+        return title;
+    }
+
+	public static void setHueIm(ImagePlus hueIm) {
+		HSB_Stack_Splitter.hueIm = hueIm;
+	}
+
+	public static ImagePlus getHueIm() {
+		return hueIm;
+	}
+
+	public static void setSatIm(ImagePlus satIm) {
+		HSB_Stack_Splitter.satIm = satIm;
+	}
+
+	public static ImagePlus getSatIm() {
+		return satIm;
+	}
+
+	public static void setBrightIm(ImagePlus brightIm) {
+		HSB_Stack_Splitter.brightIm = brightIm;
+	}
+
+	public static ImagePlus getBrightIm() {
+		return brightIm;
+	}
+
+	
+}
+
+

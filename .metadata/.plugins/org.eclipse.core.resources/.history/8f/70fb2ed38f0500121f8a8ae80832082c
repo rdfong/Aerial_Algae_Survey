@@ -1,0 +1,147 @@
+package color;
+import main.imageMetaData;
+import ij.IJ;
+import ij.ImagePlus;
+import ij.WindowManager;
+import ij.gui.GenericDialog;
+
+@Deprecated
+public class ColorProcessing {
+
+	private static ImagePlus imp;
+	private static double perGreenCoverage;
+	private static double perRedCoverage;
+	private static double perLightGreenCoverage;
+	private static double perDarkGreenCoverage;
+	private static int numDarkGreenPixels;
+	private static int numLightGreenPixels;
+	private static int numGreenPixels;
+	private static int totalGreenPixels;
+	private static int totalRedPixels;
+	private static int numRedPixels;
+	private static double perTotalAlgaeCoverage;
+	private static double perTotalGreenCoverage;
+
+	public static void createDialogBox(imageMetaData imageProperties) {
+		GenericDialog gd = new GenericDialog("Color Panel", IJ.getInstance());
+	    gd.addMessage("Please select Color(s):");
+		gd.addHelp("www.oce.uri.edu/algae");
+		
+	    String[] labels = {"Green and Red ","Show HSV Images","Filter Wave Action"};
+	    boolean[] values = {true, true,true};
+	    gd.addCheckboxGroup(3, 1, labels, values);
+	    gd.addSlider("Wave Action Filter", 0, 10, 5);
+	    
+	    gd.showDialog();
+	    getUserEnteredInformationFromDialog(gd, imageProperties);
+	    
+	   	    
+	}
+	
+	/** Gets the user entered data from the dialog box
+	 * @param imageProperties 
+	 * @param Generic Dialog box
+	 */
+	private static void getUserEnteredInformationFromDialog(GenericDialog gd, imageMetaData imageProperties) {
+		IJ.freeMemory();
+		boolean greenRedBol = gd.getNextBoolean();
+		boolean showBol = gd.getNextBoolean();
+		boolean filterBol = gd.getNextBoolean();
+		double filterValue = gd.getNextNumber();
+		
+		
+		if ((greenRedBol ==false)){
+			IJ.error("no color was selected??");
+		}
+		else
+		{
+			imp = WindowManager.getCurrentImage();
+			
+			
+			HSB_Stack_Splitter.splitStack(imp,filterBol,filterValue);
+					
+			IJ.log("-------*********-------");
+			IJ.log(imageProperties.getCurrentFileName());
+			IJ.log("-------*********-------");
+			HSVProcessing.getNumberOfInvalidPixels(showBol, imageProperties);
+			
+			IJ.log("No Pixels:"+ Integer.toString(HSVProcessing.getNumberOfPixels()));
+			
+			int noOfPixels = HSVProcessing.getNumberOfPixels(); //- (HSVProcessing.getBlackPixelsNo()+ HSVProcessing.getWhitePixelsNo());
+			getNumberOfBeachPixels(noOfPixels);
+			if((greenRedBol ==true) ){
+				//OUTPUT TO LOG!
+				IJ.log("-----------------------");
+				//TODO do light and dark red!!!!
+				getRedPercentCoverage(noOfPixels);	
+				totalRedPixels = numRedPixels;
+				IJ.log("-----------------------");
+				getLightGreenPercentCoverage(noOfPixels);
+				getGreenPercentCoverage(noOfPixels);
+				getDarkGreenPercentCoverage(noOfPixels);
+				getTotalGreenPercentCoverage(noOfPixels);
+				IJ.log("-----------------------");
+				getTotalAlgaePercentCoverage(noOfPixels);
+			}
+		}	
+	}
+
+	private static void getNumberOfBeachPixels(int noOfPixels) {
+		int numBeachPixels = HSVProcessing.getNumberOfBeachPixels();	
+		double perBeachCoverage  = ((double)numBeachPixels / (double) (noOfPixels))*100;
+		IJ.log("Beach Pixels %: "+ Double.toString(perBeachCoverage));	
+	}
+
+	private static void getTotalAlgaePercentCoverage(int noOfPixels) {
+		int totalAlgaePixels = totalGreenPixels+totalRedPixels;
+		perTotalAlgaeCoverage =((double)totalAlgaePixels / (double) (noOfPixels))*100;
+		IJ.log("Total Algae Pixels(Red and Green)%: "+ Double.toString(perTotalAlgaeCoverage));	
+		
+	}
+
+	private static void getTotalGreenPercentCoverage(int noOfPixels) {
+		totalGreenPixels = numDarkGreenPixels+numLightGreenPixels+numGreenPixels;
+		perTotalGreenCoverage =((double)totalGreenPixels / (double) (noOfPixels))*100;
+		IJ.log("Total Green Pixels: " + Double.toString(totalGreenPixels));
+		IJ.log("Total Green Pixels %: "+ Double.toString(perTotalGreenCoverage));	
+	}
+/**
+ * get dark green percent coverage
+ * @param noOfPixels
+ */
+	private static void getDarkGreenPercentCoverage(int noOfPixels) {
+		numDarkGreenPixels = HSVProcessing.getNumberOfDarkGreenPixels();	
+		perDarkGreenCoverage  = ((double)numDarkGreenPixels / (double) (noOfPixels))*100;
+		IJ.log("Dark Green Pixels %: "+ Double.toString(perDarkGreenCoverage));	
+	}
+/**
+ * get light green percent coverage
+ * @param noOfPixels
+ */
+	private static void getLightGreenPercentCoverage(int noOfPixels) {
+		numLightGreenPixels = HSVProcessing.getNumberOfLightGreenPixels();	
+		perLightGreenCoverage  = ((double)numLightGreenPixels / (double) (noOfPixels))*100;
+		IJ.log("Light Green Pixels %: "+ Double.toString(perLightGreenCoverage));
+		
+	}
+
+	/**
+	 * get medium green percent coverage
+	 * @param noOfPixels
+	 */
+	private static void getGreenPercentCoverage(int noOfPixels) {
+		numGreenPixels = HSVProcessing.getNumberOfGreenPixels();	
+		perGreenCoverage  = ((double)numGreenPixels / (double) (noOfPixels))*100;
+		IJ.log("Green Pixels %: "+ Double.toString(perGreenCoverage));
+	}
+
+	/**
+	 * get red percent coverage
+	 * @param noOfPixels
+	 */
+	private static void getRedPercentCoverage(int noOfPixels) {
+		numRedPixels = HSVProcessing.getNumberOfRedPixels()-(HSVProcessing.getBlackPixelsNo()+ HSVProcessing.getWhitePixelsNo());
+		perRedCoverage  = ((double)numRedPixels / (double) (noOfPixels))*100;
+		IJ.log("Red Pixels %: "+ Double.toString(perRedCoverage));
+	}
+}

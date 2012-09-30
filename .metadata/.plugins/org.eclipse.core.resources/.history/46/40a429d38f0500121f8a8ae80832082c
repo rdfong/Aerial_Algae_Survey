@@ -1,0 +1,50 @@
+#app information
+app.name= ImageProcessingColorPropsFile
+app.version= 1.0
+app.value= 32
+
+#red color processing (boundaries)
+red.entered=1
+
+red.start1=0
+red.end1=20
+
+orange.entered=1
+orange.start=21
+orange.end =39
+
+purple.start=171
+purple.end=189
+
+red.start2=190
+#end not needed as you go to the length, can be set if entered
+red.end2=255
+
+#green (medium) color processing
+green.entered=1
+green.start=61
+green.end=100
+
+#light green color processing
+lightGreen.entered=1
+lightGreen.start=40
+lightGreen.end=60
+
+#dark green color processing
+darkGreen.entered=1
+darkGreen.start=101
+darkGreen.end=170
+
+#beach Pixels
+beach.entered=1
+beach.start=7
+beach.end=40
+
+
+#Line Color
+line.color=black
+
+#version
+tool.version=1.3.2
+#invalid properties (DO NOT PLAY WITH)
+#

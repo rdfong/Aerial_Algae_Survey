@@ -1,0 +1,71 @@
+package com.algae.excel.parser;
+
+import static org.junit.Assert.*;
+
+import java.io.File;
+import java.util.ArrayList;
+
+import org.junit.Test;
+
+
+public class ExcelDataConnectorTest {
+
+	String fileName = ("C:/Users/Andy/workspace/IJ/6-22-10--0003.xls");
+	String fileNameHorz = ("C:/Users/Andy/workspace/IJ/10-25-10--0008.xls");
+	@Test
+	public void testLoadExcelFileGetTitles() throws Exception {
+		
+		ExcelDataConnector ex = new ExcelDataConnector(fileName);
+		
+		ArrayList<String> a = ex.getColNames(0);
+		assertTrue((a.get(1).equals("Meta Data")));
+		assertTrue((a.get(5).equals("Lat")));
+		assertTrue((a.get(6).equals("Lon")));
+	}
+	
+	@Test
+	public void testCanGetNumberOfRows() throws Exception {
+		ExcelDataConnector ex = new ExcelDataConnector(fileName);
+		
+		int noRows = ex.getNumberOfRows(0);
+		assertEquals(6, noRows);
+	}
+	
+	@Test
+	public void testCanGetInformationFromRows() throws Exception {
+		ExcelDataConnector ex = new ExcelDataConnector(fileName);
+		
+		int rowOfInterest= 1;
+		ArrayList<String> row = ex.getSpecificRowData(rowOfInterest,0);
+		assertTrue(row!=null);
+		// 53 columns!
+		assertEquals(53, row.size());
+	}
+	
+	@Test
+	public void testLoopThroughAllDataContainedOnTheFirstSheet() throws Exception {
+		ExcelDataConnector ex = new ExcelDataConnector(fileName);	
+		ex.parseAllRowsOnFirstSheet();		
+		File f = new File("Algae Data.kml");		
+		assertTrue(f.exists());
+		
+	}
+	
+	@Test
+	public void testCreateKmlAndCreatePitch() throws Exception {
+		ExcelDataConnector ex1 = new ExcelDataConnector(fileName);	
+		//ex1.parseAllRowsOnFirstSheet();		
+		KmlParser kmlP = new KmlParser();
+		String X = "X Points:1614:3708:0:0:"; 
+		String Y = "Y Points:1698:1692:0:0:";
+			
+
+		kmlP.setXHorzString(X);
+		kmlP.setYHorzString(Y);
+		assertEquals(-5,ex1.getPitch(kmlP),0);
+		
+		
+		
+	}
+	
+}

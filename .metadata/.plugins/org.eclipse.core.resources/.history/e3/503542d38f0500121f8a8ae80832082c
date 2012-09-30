@@ -1,0 +1,36 @@
+package com.algae.dataconnector.uploader;
+
+import static org.junit.Assert.*;
+
+import org.junit.Test;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+
+
+public class MysqluploaderTest {
+
+	@Test
+	public void testConnectToMySqlServer() throws Exception {
+		Connection con = null;
+
+	    try {
+	      Class.forName("com.mysql.jdbc.Driver").newInstance();
+	      con = DriverManager.getConnection("jdbc:mysql://db.egr.uri.edu/mysql",
+	        "oce_user", "pa$$word");
+
+	      if(!con.isClosed())
+	        System.out.println("Successfully connected to " +
+	          "MySQL server using TCP/IP...");
+
+	    } catch(Exception e) {
+	      System.err.println("Exception: " + e.getMessage());
+	    } finally {
+	      try {
+	        if(con != null)
+	          con.close();
+	      } catch(SQLException e) {}
+	    }
+	  }
+}

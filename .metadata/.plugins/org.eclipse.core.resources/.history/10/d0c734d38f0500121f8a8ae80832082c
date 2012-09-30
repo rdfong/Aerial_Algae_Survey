@@ -1,0 +1,33 @@
+package main;
+
+import ij.IJ;
+import ij.ImagePlus;
+import ij.WindowManager;
+import ij.gui.WaitForUserDialog;
+import ij.plugin.Duplicator;
+
+
+public class imageProcessing {
+	
+	public static void createRGBSplit(ImagePlus imp) {		
+		
+		imp.setTitle("RGB IMAGE");
+		
+		if (imp.getType()==4){
+		
+		ImagePlus RGBImage = new Duplicator().run(imp);	
+		RGBImage.show();
+		RGBImage.setTitle("Original RGB Image");
+		
+		IJ.run(imp, "Split Channels", "");	
+		//Tile the images
+		IJ.run("Tile", "");
+		}
+		else
+		{
+			IJ.log("ERROR: WRONG IMAGE TYPE...");
+		}
+	}
+	
+	
+}

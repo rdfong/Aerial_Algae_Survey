@@ -1,0 +1,39 @@
+package excel;
+import ij.IJ;
+import ij.ImagePlus;
+import ij.plugin.filter.PlugInFilter;
+import ij.process.ImageProcessor;
+
+import java.io.IOException;
+
+
+@Deprecated
+public class JarRunner_ implements PlugInFilter {
+
+	private ImagePlus imp;
+
+	@Override
+	public void run(ImageProcessor ip) {
+		IJ.log("Excel Writer...");
+		
+		try {
+			
+			writeXLSDoc.writeDoc();
+			IJ.log("Done!");
+		} catch (IOException e) {
+			e.printStackTrace();
+			IJ.error("fail");
+		}
+	}
+
+	@Override
+	public int setup(String arg, ImagePlus imp) {
+		this.imp = imp;
+        if (arg.equals("about"))
+        {IJ.log("somet more"); 
+        return DONE;}
+        return DOES_ALL;
+	}
+
+}
+

@@ -1,0 +1,16 @@
+package com.algae.excel.parser;
+
+import static org.junit.Assert.*;
+
+import org.junit.Test;
+
+
+public class KmlParserTest {
+
+	
+	@Test
+	public void testGetHorzPoints() throws Exception {
+		KmlParser kml = new KmlParser();
+		assertTrue(kml.splitHorzString("X Points:1698:1692:0:0:").length >0);
+	}
+}

@@ -1,0 +1,201 @@
+package preferences;
+
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Properties;
+
+public class GetPrefs {
+private static Properties prop;
+
+public static String redValuesAreEntered;
+public static String greenValuesAreEntered;
+public static String orangeValuesAreEntered;
+
+//RED HUE BOUNDARIES
+private static String redBoundary1Start;
+private static String redBoundary1End;
+private static String redBoundary2Start;
+private static String redBoundary2End;
+
+//Green Hue Boundaries
+private static String greenBoundaryStart;
+private static String greenBoundaryEnd;
+private static String lightGreenBoundaryEnd;
+private static String lightGreenBoundaryStart;
+private String darkGreenBoundaryEnd;
+private String darkGreenBoundaryStart;
+
+//orange hue boundaries
+private static String orangeBoundaryStart;
+private static String orangeBoundaryEnd;
+
+
+
+public GetPrefs(){
+	try {
+		prop = loadPropertiesFile();
+	} catch (IOException e) {
+		e.printStackTrace();
+	}  
+	
+	String appName = (prop.getProperty("app.name"));
+	
+	redValuesAreEntered = (prop.getProperty("red.entered"));
+	greenValuesAreEntered = (prop.getProperty("green.entered"));
+	orangeValuesAreEntered = (prop.getProperty("orange.entered"));
+	
+	if (redValuesAreEntered != null){
+	getRedValuesFromProperties();
+	}
+	
+	if (greenValuesAreEntered != null){
+		getGreenValuesFromProperties();
+	}
+	
+	if (orangeValuesAreEntered != null){
+		getOrangeValuesFromProperties();
+	}
+	
+}
+	
+
+
+public void getRedValuesFromProperties() {
+	redBoundary1Start = (prop.getProperty("red.start1"));
+	redBoundary1End = (prop.getProperty("red.end1"));
+	redBoundary2Start = (prop.getProperty("red.start2"));
+	redBoundary2End = (prop.getProperty("red.end2"));
+}
+
+public double getRedBoundary1Start() {
+	return Double.parseDouble(redBoundary1Start);
+}
+
+
+
+public double getRedBoundary1End() {
+	return Double.parseDouble(redBoundary1End);
+}
+
+
+
+public double getRedBoundary2Start() {
+	return Double.parseDouble(redBoundary2Start);
+}
+
+
+
+public double getRedBoundary2End() {
+	if ((redBoundary2End.isEmpty() == false)){
+		return Double.parseDouble(redBoundary2End);
+	}
+	else
+	{
+	return 255;
+	}
+}
+
+public String getPrefFileName() {
+	return "/IP_Prefs.txt";
+}
+
+/**
+ * sets up the stream to the properties file
+ * @return {@link Properties} loaded from disk
+ * @throws Exception
+ */
+public Properties loadPropertiesFile() throws IOException {
+	prop = new Properties();
+	InputStream is = getClass().getResourceAsStream(getPrefFileName()); 
+    prop.load(is);   
+    return prop;
+}
+
+public String getRedValuesAreEntered() {
+	return redValuesAreEntered;
+}
+
+
+
+public String getGreenValuesAreEntered() {
+	return greenValuesAreEntered;
+}
+
+
+
+public double getGreenBoundaryStart() {
+	return Double.parseDouble(greenBoundaryStart);
+}
+
+
+
+public void getGreenValuesFromProperties() {
+	greenBoundaryStart = (prop.getProperty("green.start"));
+	greenBoundaryEnd = (prop.getProperty("green.end"));
+	lightGreenBoundaryEnd = (prop.getProperty("lightGreen.end"));
+	lightGreenBoundaryStart = (prop.getProperty("lightGreen.start"));
+	darkGreenBoundaryEnd = (prop.getProperty("darkGreen.end"));
+	darkGreenBoundaryStart = (prop.getProperty("darkGreen.start"));
+}
+
+public void getOrangeValuesFromProperties(){
+	orangeBoundaryStart = (prop.getProperty("orange.start"));
+	orangeBoundaryEnd = (prop.getProperty("orange.end"));
+}
+
+
+
+public double getGreenBoundaryEnd() {
+	return Double.parseDouble(greenBoundaryEnd);
+}
+
+
+
+public String getLineColor() {
+	return (prop.getProperty("line.color"));
+}
+
+
+
+public static String getToolVersion() {
+	return (prop.getProperty("tool.version"));
+}
+
+
+
+public double getLightGreenBoundaryStart() {
+	return Double.parseDouble(lightGreenBoundaryStart);
+}
+
+
+
+public double getLightGreenBoundaryEnd() {
+	return Double.parseDouble(lightGreenBoundaryEnd);
+}
+
+
+
+public double getDarkGreenBoundaryStart() {
+	return Double.parseDouble(darkGreenBoundaryStart);
+}
+
+
+
+public double getDarkGreenBoundaryEnd() {
+	return Double.parseDouble(darkGreenBoundaryEnd);
+}
+
+
+
+public double getOrangeBoundaryStart() {
+	return Double.parseDouble(orangeBoundaryStart);
+}
+  
+public double getOrangeBoundaryEnd() {
+	return Double.parseDouble(orangeBoundaryEnd);
+}
+
+  
+}

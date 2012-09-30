@@ -1,0 +1,303 @@
+package com.algae.excel.parser;
+
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.text.DecimalFormat;
+import java.util.ArrayList;
+
+import org.jdom.Document;
+import org.jdom.Element;
+import org.jdom.Namespace;
+import org.jdom.output.Format;
+import org.jdom.output.XMLOutputter;
+
+public class KmlParser {
+
+	private Namespace ns;
+	private String imageName = "Algae Data";
+	private String outputFile = "C:/Users/Andy/Desktop/"+imageName+".kml";
+	private Element kml;
+	private Document kmlDocument;
+	private Element document;
+	private String XHorz;
+	private String YHorz;
+	private String[] a;
+	
+	public KmlParser() {
+		Namespace ns = Namespace.getNamespace("", "http://earth.google.com/kml/2.2");
+	    // kml
+	    kml = new Element("kml", ns);
+	    kmlDocument = new Document(kml);
+	    
+	    // Document
+	    document = new Element("Document", ns);
+	    kml.addContent(document);
+	    
+	    // name
+	    Element name = new Element("name", ns);
+	    name.setText("Algae Image Data");
+	    document.addContent(name);
+	    
+	}
+	
+	public void createKMLEntry(ArrayList<String> colElements, CSVWriter csv) {
+		//setHorizon Line
+		setXHorzString(colElements.get(51));
+		setYHorzString(colElements.get(52));
+		
+		// Placemark
+        Element placemark = new Element("Placemark", ns);
+        document.addContent(placemark);
+        
+        // name
+        Element pmName = new Element("name", ns);
+        pmName.setText(getImageName(colElements));
+        placemark.addContent(pmName);
+        
+        String imageSource = createGooglePerChart(colElements);      
+        String CDataDescr = createDescripData(colElements, imageSource,csv);
+        
+        // description
+        Element pmDescription = new Element("description", ns);
+        pmDescription.setText(CDataDescr);
+        placemark.addContent(pmDescription);
+        
+        // Point
+        Element pmPoint = new Element("Point", ns);
+        placemark.addContent(pmPoint);
+ 
+        // coordinates
+        Element pmCoordinates = new Element("coordinates", ns);
+        pmCoordinates.setText(createLatLonStr(colElements));
+        pmPoint.addContent(pmCoordinates);
+        
+	}
+
+	/**
+	 * @param colElements
+	 * @param imageSource
+	 * @param csv 
+	 * @return
+	 */
+	private String createDescripData(ArrayList<String> colElements,String imageSource, CSVWriter csv) 
+			{
+			
+		String horzX = colElements.get(51);
+		String horzY = colElements.get(52);
+		DecimalFormat df = new DecimalFormat("#.#####");
+		double estPitch = getEstPitch(horzX,horzY);
+		double estArea = getEstArea(estPitch,(int)Double.parseDouble(colElements.get(5)));	
+		double areaKM = estArea/1000000;
+		
+				String CDataDescr = "<![CDATA[<h3>Date Information</h3>" +
+        		"Year:"+(int)Double.parseDouble(colElements.get(4))+"<br>"+
+        		"Month:"+(int)Double.parseDouble(colElements.get(3))+"<br>"+
+        		"Day:"+(int)Double.parseDouble(colElements.get(2))+"<br>"+
+        		"Time(HH:MM:SS) : "+(int)Double.parseDouble(colElements.get(8))+":"+(int)Double.parseDouble(colElements.get(9))+":"+(int)Double.parseDouble(colElements.get(10))+
+        		"<br>"+
+        		"Height:"+(int)Double.parseDouble(colElements.get(5))+" M<br>"+
+        		"<br>"+
+        		"<i>% Cover</i><br>"+
+        		"G::"+colElements.get(42)+", R::"+colElements.get(43)+", Br::"+colElements.get(44)+"<br>"+
+        		"<img src=\""+ imageSource+"\">"+       		    		
+        		"<p><font color=\"red\">Additional MetaData</i><br>" +
+        		"<b>Directory:</b>"+ colElements.get(45)+ "<br>"+
+        		"<b>FileName:</b>"+ colElements.get(46)+ "<br>"+
+        		"<b>Est Pitch:</b>"+ estPitch +"<br>"+ 
+        		"<b>Est Area:</b>"+ df.format(estArea) + " M^2"  +"<br>"+ 
+        		"<b>Est Area:</b>"+ df.format(areaKM) + " KM^2"  +"<br>"+ 
+				"<b>Error Metric:</b>"+ 0 +"<br>"; 
+        		//" and<b>easier to write</b> when you can avoid using entity references.</font></p>";
+				if (estPitch ==-999){
+					CDataDescr= CDataDescr.toString() + "UNKNOWN PITCH <br>";
+					CDataDescr= CDataDescr.toString() + "UNKNOWN AREA <br>";
+					CDataDescr= CDataDescr.toString() + "</font></p>";
+        		}
+				else
+				{
+					CDataDescr= CDataDescr.toString() +"<br>% Area used = "+df.format(getMaxAreaUsed(colElements))+
+					"<br>Est Area used: = "+df.format((estArea/100)*getMaxAreaUsed(colElements))+ " M^2"  +"<br>"+ 
+					"Est Area used: = "+df.format((areaKM/100)*getMaxAreaUsed(colElements))+ " KM^2"  +"<br>"+ 
+					"<br>"+
+					"<b>Est Green Area: = " + df.format((estArea/100)*Double.parseDouble(colElements.get(42))) + " M^2<br>"+
+					"<b>Est Red Area: = " + df.format((estArea/100)*Double.parseDouble(colElements.get(43))) + " M^2<br>"+
+					"Est Brown Area: = " + df.format((estArea/100)*Double.parseDouble(colElements.get(44))) + " M^2<br>"+
+					"</b></p>";
+					
+					a = new String[10];
+					a[0] = df.format((estArea/100)*getMaxAreaUsed(colElements));
+					a[1] = df.format((estArea/100)*Double.parseDouble(colElements.get(42)));
+					a[2] = df.format((estArea/100)*Double.parseDouble(colElements.get(43)));
+					
+					
+					csv.addDataToCSVFile(a);
+					
+				}
+				
+				
+		return CDataDescr;
+	}
+	
+	private double getMaxAreaUsed(ArrayList<String> colElements) {
+		double totalPixels = Double.parseDouble(colElements.get(12))*Double.parseDouble(colElements.get(11));		
+		double totalPixelsUsed = Double.parseDouble(colElements.get(14));
+		double percentUsed = (totalPixelsUsed/(totalPixels/2))*100;
+		return percentUsed;
+		
+	}
+
+	public double getEstArea(double estPitch, int heloHeight) {
+		double height=  (double)heloHeight;
+		double horzAngle = 104;	
+		double vertAngle = 81;
+		
+		double hzAngle =Math.abs(((vertAngle/2)-estPitch));
+		double op2 = (height*Math.tan(Math.toRadians(hzAngle)));
+		double op = (height*Math.tan(Math.toRadians(estPitch)));
+		double C = Math.sqrt((Math.pow(op, 2))+(Math.pow(height, 2)));
+		double rvaC = Math.sqrt((Math.pow(op2, 2))+(Math.pow(height, 2)));
+		
+		double B;
+		double hzLength	= ((Math.tan(Math.toRadians(horzAngle/2)))*rvaC)*2;
+		double hzLength2 = ((Math.tan(Math.toRadians(horzAngle/2)))*C)*2;   //=(TAN(RADIANS(52))*F2)*2
+		double vtlength = (height*Math.tan(Math.toRadians(hzAngle)));
+		double vtlength2 = (height*Math.tan(Math.toRadians(estPitch)));
+		B = vtlength2 - vtlength;
+		
+		double area = ((hzLength+hzLength2) * B)/2;
+		return area;
+	}
+
+	public double getEstPitch(String horzX, String horzY) {
+		//split the string
+		String[] xSplit = horzX.split(":");
+		String[] ySplit = horzY.split(":");
+		
+		double yDiff;
+		
+		if (ySplit.length ==1){
+			yDiff = (Double.parseDouble(ySplit[0]));	
+		}
+		else
+		{
+		
+			double xDiff = Math.abs(Integer.parseInt(xSplit[1]) - Integer.parseInt(xSplit[2]));
+			if (xDiff <200){
+				return -999;
+			}
+			//get center location
+			yDiff = Math.abs(Integer.parseInt(ySplit[1]) + Integer.parseInt(ySplit[2]))/2;
+		}
+		
+		double estPitch = -0.0285*yDiff + 41.868;
+		
+		return 90-estPitch;
+	}
+
+	/**
+	 * @param colElements
+	 * @return
+	 */
+	private String createGooglePerChart(ArrayList<String> colElements) {
+		
+		double el1 = Double.parseDouble(colElements.get(42));
+		double el2 = Double.parseDouble(colElements.get(43));
+		double el3 = Double.parseDouble(colElements.get(44));
+		
+		if (el1+el2+el3<=100){
+			double other = 100-(el1+el2+el3);	
+			String imageSource = "https://chart.googleapis.com/chart?"+
+			  //type	  
+			  "cht=p3&"+
+			  //color
+			  "chco=7777CC|76A4FB|3399CC|3366CC&"+
+			  //size
+			  "chs=250x100&"+
+			  //Chart Data		  
+			  "chd=t:"+colElements.get(42)+","+colElements.get(43)+","+colElements.get(44)+","+other+"&"+
+			  //Chart Labels
+			  "chl=Green|Red|Brown|Other";
+			   return imageSource;	
+		}
+		else{
+			String imageSource = "https://chart.googleapis.com/chart?"+
+			  //type	  
+			  "cht=p3&"+
+			  //Color
+			  "chco=7777CC|76A4FB|3399CC&"+
+			  //size
+			  "chs=250x100&"+
+			  //Chart Data		  
+			  "chd=t:"+colElements.get(42)+","+colElements.get(43)+","+colElements.get(44)+"&"+
+			  //Chart Labels
+			  "chl=Green|Red|Brown";
+			return imageSource;	
+		}
+		
+		
+		
+	}
+
+	/**
+	 * @param colElements
+	 */
+	private String createLatLonStr(ArrayList<String> colElements) {
+		//create lat long string
+        String latLonStr = colElements.get(7)+","+colElements.get(6)+",0";
+        return latLonStr;
+	}
+
+	/**
+	 * @param colElements
+	 * @return
+	 */
+	private String getImageName(ArrayList<String> colElements) {
+		String a =colElements.get(46);
+        String[] b = a.split("_");
+        String imageName = b[0];
+		return imageName;
+	}
+
+	public void writeDomToFile() {
+		try {
+            XMLOutputter outputter = new XMLOutputter(Format.getPrettyFormat());
+            FileOutputStream writer = new FileOutputStream(outputFile);
+            outputter.output(kmlDocument, writer);
+            writer.close();
+          } catch (IOException e) {
+            e.printStackTrace();
+          }
+		
+	}
+
+	public double calculatePitch() {
+		
+		//get Pitch from Yhorz points
+		String[] splitHorz = splitHorzString(YHorz);
+		double point1 = Double.parseDouble(splitHorz[1]);
+		double point2 = Double.parseDouble(splitHorz[3]);	
+		double avPixPitch = Math.abs((point1+point2)/2);
+		
+		//pitchEquation
+		double estPitch= (-0.0285*avPixPitch) + 41.868;
+		return estPitch;	
+	}
+
+	public void setXHorzString(String x) {
+	this.XHorz = x;
+	}
+
+	public void setYHorzString(String y) {
+	this.YHorz = y;
+	}
+
+	public String[] splitHorzString(String Horz) {
+		String[] splitHorz = Horz.split(":");
+		return splitHorz;
+	}
+
+	public String getOutputDir() {
+		return outputFile;
+	}
+
+}

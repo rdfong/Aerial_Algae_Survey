@@ -1,0 +1,73 @@
+package preference;
+
+import static org.junit.Assert.*;
+import java.util.Properties;
+import org.junit.Test;
+import preferences.GetPrefs;
+
+
+public class PrefTest {
+
+	public static GetPrefs Prefs = new GetPrefs();
+	
+	
+	@Test
+	public void testGetConfigFileName() throws Exception {
+		
+     assertEquals("/IP_Prefs.txt", Prefs.getPrefFileName());
+		
+	}
+	
+	@Test
+	public void testGetRedValuesFromPropertyFile() throws Exception {
+		assertEquals("1", Prefs.getRedValuesAreEntered());
+	}
+	
+	@Test
+	public void testGetGreenValuesFromPropertyFile() throws Exception {
+		assertEquals("1",Prefs.getGreenValuesAreEntered());
+	}
+	
+	
+	@Test
+	public void testGetRedValueBoundary1StartFromPropFile() throws Exception {
+		Prefs.getRedValuesFromProperties();
+		assertEquals(0, Prefs.getRedBoundary1Start(), 0);	
+	}
+	
+	@Test
+	public void testGetGreenValueBoundaryStart() throws Exception {
+		
+		Prefs.getGreenValuesFromProperties();
+		assertEquals(43, Prefs.getGreenBoundaryStart(), 0);	
+	}
+	
+	@Test
+	public void testGetRedValueBoundary1EndFromPropFile() throws Exception {
+		Prefs.getRedValuesFromProperties();
+		assertEquals(21, Prefs.getRedBoundary1End(), 0);	
+	}
+	
+	@Test
+	public void testGetGreenValueEndFromPropFile() throws Exception {
+		Prefs.getGreenValuesFromProperties();
+		assertEquals(150, Prefs.getGreenBoundaryEnd(), 0);	
+	}
+	
+	@Test
+	public void testGetRedValueBoundary2EndNOTSETFromPropFile() throws Exception {
+		
+		Prefs.getRedValuesFromProperties();
+		assertEquals(255, Prefs.getRedBoundary2End(), 0);	
+	}
+	
+	@Test
+	public void testGetColorForLinesFromPrefFile() throws Exception {
+		assertEquals("black", Prefs.getLineColor());
+	}
+
+	@Test
+	public void testGetVersionInformationFromThePrefFile() throws Exception {
+		assertEquals("1.3.1", Prefs.getToolVersion());
+	}
+}

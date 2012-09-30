@@ -1,0 +1,232 @@
+package excel;
+import ij.IJ;
+import ij.measure.ResultsTable;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+
+import org.apache.poi.hssf.usermodel.HSSFCell;
+import org.apache.poi.hssf.usermodel.HSSFRow;
+import org.apache.poi.hssf.usermodel.HSSFSheet;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.usermodel.CreationHelper;
+
+
+/**
+ * 
+ * @author Andrew Bird
+ *
+ */
+public class writeXLSDoc {
+	
+	private static ResultsTable table;
+	private static String excelFileName;
+
+	public static void writeDoc() throws IOException {
+		    HSSFWorkbook wb = new HSSFWorkbook();
+		    //Workbook wb = new XSSFWorkbook();
+		    CreationHelper createHelper = wb.getCreationHelper();
+		    HSSFSheet sheet = wb.createSheet("new sheet");
+
+		    table = getResultsTable();
+		    
+		    getColumnHeadings();
+		    
+		    HSSFRow rowDataHead = sheet.createRow((short)0);
+			for (int colNo = 0; colNo < getColumnHeadings().length; colNo++) {
+				rowDataHead.createCell(colNo).setCellValue(createHelper.createRichTextString(getColumnHeadings()[colNo]));
+			}
+		    
+			for (int i = getColumnHeadings().length; i < getColumnHeadings().length + getNumberOfMetaDataHeadings(); i++) {
+				rowDataHead.createCell(i).setCellValue(createHelper.createRichTextString(getMetaDataColumnHeading(i)));
+			}
+			
+			
+			
+		    // Create a row and put cell information in it. Rows are 0 based.
+		    for (int i = 1; i < table.getCounter()+1; i++) {
+		    	HSSFRow row = sheet.createRow((short)i);
+		    	
+		    	row.createCell(0).setCellValue(i);
+		    	
+		    	int numOfCols = getColumnHeadings().length;
+		    	//IJ.log(Integer.toString(numOfCols));
+		    	
+		    	IJ.log("row: "+table.getRowAsString(i-1));	
+		    	String sColAsString = table.getRowAsString(i-1);		    	
+		    	//IJ.log(sColAsString);	
+		    	
+		    	String [] splitColData = sColAsString.split("\t");    	
+		    	
+		    	String metaData = splitColData[1];
+		    	//to show meta data is present
+		    	if (metaData.contains("null"))
+		    	{
+		    		IJ.log("INFO:Null Entry in Meta Data");
+		    		splitColData[1] = "0";
+		    	}
+		    	else
+		    	{
+		    		splitColData[1] = "1";	
+		    	}
+		    		    	
+		    	
+		    	setColumnData(row, splitColData);
+					
+				String[] metaInfo = metaData.split("\\^");
+				
+				
+				//Check the date information and set the file name
+				if (i == 1){
+				excelFileName = getExcelFileName(metaInfo);
+				//IJ.log("FileName: "+ excelFileName);
+				}
+				else
+				{
+					checkFileDatesAgainstFirstEntery(metaInfo,excelFileName);
+				}
+				
+			
+				
+				
+				
+				//try to add meta Data
+				int totalcol = (splitColData.length + metaInfo.length);
+				
+				for (int mColD = splitColData.length; mColD < totalcol; mColD++) {
+					row.createCell(mColD).setCellValue(createHelper.createRichTextString(metaInfo[mColD-splitColData.length]));
+				}
+				//
+				
+		    	
+			}	  
+		    
+		    writeAndCloseTheFile(wb);
+	}
+
+	/**
+	 *Check the file name against the current entry if it does not match flag an IJ.log ERROR
+	 */
+	public static void checkFileDatesAgainstFirstEntery(String[] metaInfo, String excelFileName) {
+		String currentDate = splitDate(metaInfo[1]);
+		currentDate = currentDate.concat(".xls");
+		if (currentDate.equals(excelFileName)){}
+		else 
+		{IJ.log("WARNING:DATA ENTERED MIGHT NOT MATCH FILE NAME");}
+	}
+
+	/**
+	 * Get the excel file name from the first date entered/ first date in row entered
+	 * @param i
+	 * @param metaInfo
+	 */
+	public static String getExcelFileName(String[] metaInfo) {
+		String fullDate = (metaInfo[1]);
+		
+		
+		if (fullDate!=null){
+	   String nameString = splitDate(fullDate);
+	   
+	   checkFileExists(nameString);
+	   
+	   return nameString.concat(".xls");
+		}
+		else return "workbook.xls";
+		
+	}
+
+	/**
+	 * @param nameString
+	 */
+	public static String checkFileExists(String nameString) {
+		File file=new File("/"+nameString+".xls");
+		   boolean exists = file.exists();
+		   if (exists == true){
+			   nameString.concat("-"+getDate());
+		   }
+		   return nameString;
+	}
+
+	public static String getDate() {
+		String DATE_FORMAT_NOW = "yyyy-MM-dd";
+		Calendar cal = Calendar.getInstance();
+	    SimpleDateFormat sdf = new SimpleDateFormat(DATE_FORMAT_NOW);
+	    return sdf.format(cal.getTime());
+
+	  }
+	
+	
+	/**
+	 * @param fullDate
+	 * @return
+	 */
+	private static String splitDate(String fullDate) {
+		String[] fullFileName = fullDate.split("_");
+		   String nameString = fullFileName[0];
+		return nameString;
+	}
+
+	/**
+	 * @param i
+	 * @return
+	 */
+	private static String getMetaDataColumnHeading(int i) {
+		return getMetaDataHeadings()[i-getColumnHeadings().length].toString();
+	}
+
+	private static int getNumberOfMetaDataHeadings() {
+		metaDataHeadings[] metaHeadings = getMetaDataHeadings();
+		return metaHeadings.length;
+	}
+
+	/**
+	 * @return
+	 */
+	private static metaDataHeadings[] getMetaDataHeadings() {
+		metaDataHeadings[] metaHeadings = metaDataHeadings.values();
+		return metaHeadings;
+	}
+
+	/**
+	 * @param wb
+	 * @throws FileNotFoundException
+	 * @throws IOException
+	 */
+	private static void writeAndCloseTheFile(HSSFWorkbook wb)
+			throws FileNotFoundException, IOException {
+		// Write the output to a file
+		FileOutputStream fileOut = new FileOutputStream(excelFileName);
+		wb.write(fileOut);
+		fileOut.close();
+	}
+
+	/**
+	 * @param row
+	 * @param splitColData
+	 */
+	private static void setColumnData(HSSFRow row, String[] splitColData) {
+		for (int colNo = 0; colNo < splitColData.length; colNo++) {	
+		double value = Double.parseDouble(splitColData[colNo]);
+		row.createCell(colNo).setCellValue(value);
+		//IJ.log(Double.toString(value));
+		}
+	}
+
+	
+	private static String[] getColumnHeadings() {		
+		//IJ.log(table.getColumnHeadings());
+		String headString = table.getColumnHeadings();
+		String[] splitHeadings = headString.split("\t");	
+		return splitHeadings;
+	}
+	
+	private static ResultsTable getResultsTable() {
+		ResultsTable resTable = ResultsTable.getResultsTable();
+		return resTable;
+	}
+	
+}

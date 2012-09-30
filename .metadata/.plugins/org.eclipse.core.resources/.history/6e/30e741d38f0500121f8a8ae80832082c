@@ -1,0 +1,128 @@
+package old;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
+
+import org.apache.poi.hssf.record.NumberRecord;
+import org.jdom.Document;
+import org.jdom.Element;
+import org.jdom.Namespace;
+import org.jdom.output.Format;
+import org.jdom.output.XMLOutputter;
+
+public class KmlParser {
+
+	static String kmlExt = (".kml");
+	private static String outputFile;
+	
+	/**
+	 * Create a KML file based on the information saved
+	 * @param colElements
+	 */
+	public static void createKMLFile(ArrayList<String> colElements) {
+		        // parse row record
+				String imageName = "Algae Data";
+		
+		
+		       outputFile = imageName+".kml";
+		       
+		        //Write kml doc
+			    /*
+			     * Step 1: generate XML stub
+			     */
+			    Namespace ns = Namespace.getNamespace("", "http://earth.google.com/kml/2.2");
+			    // kml
+			    Element kml = new Element("kml", ns);
+			    Document kmlDocument = new Document(kml);
+			    
+			    // Document
+			    Element document = new Element("Document", ns);
+			    kml.addContent(document);
+			    
+			    // name
+			    Element name = new Element("name", ns);
+			    name.setText("Algae");
+			    document.addContent(name);
+			    
+			    /*
+			     * Step 2: add in Style elements
+			     */
+			    
+			    // Style
+			    Element style = new Element("Style", ns);
+			    style.setAttribute("id", "redIcon");
+			    document.addContent(style);
+			    
+			    // IconStyle
+			    Element iconStyle = new Element("IconStyle", ns);
+			    style.addContent(iconStyle);
+			    
+			    // color
+			    Element color = new Element("color", ns);
+			    color.setText("990000ff");
+			    iconStyle.addContent(color);
+			    
+			    // Icon
+			    Element icon = new Element("Icon", ns);
+			    iconStyle.addContent(icon);
+			    
+			    // href
+			    Element href = new Element("href", ns);
+			    href.setText("http://www.cs.mun.ca/~hoeber/teaching/cs4767/notes/02.1-kml/circle.png");
+			    icon.addContent(href);
+			    
+			    /*
+			     * Step 3: read data from source location and
+			     * add in a Placemark for each data element
+			     */
+			   
+	            // add in the Placemark
+	            // Placemark
+	            Element placemark = new Element("Placemark", ns);
+	            document.addContent(placemark);
+	            /*
+	            // name
+	            Element pmName = new Element("name", ns);
+	            pmName.setText(lineParts[0].trim());
+	            placemark.addContent(pmName);
+	            
+	            // description
+	            Element pmDescription = new Element("description", ns);
+	            pmDescription.setText(lineParts[1].trim());
+	            placemark.addContent(pmDescription);
+	            
+	            // styleUrl
+	            Element pmStyleUrl = new Element("styleUrl", ns);
+	            pmStyleUrl.setText("#redIcon");
+	            placemark.addContent(pmStyleUrl);
+	            
+	            // Point
+	            Element pmPoint = new Element("Point", ns);
+	            placemark.addContent(pmPoint);
+	            
+	            // coordinates
+	            Element pmCoordinates = new Element("coordinates", ns);
+	            pmCoordinates.setText(lineParts[2].trim());
+	            pmPoint.addContent(pmCoordinates);
+			                  
+			    /*
+			     * Step 4: write the XML file
+			     */
+			    
+			    try {
+			      XMLOutputter outputter = new XMLOutputter(Format.getPrettyFormat());
+			      FileOutputStream writer = new FileOutputStream(outputFile);
+			      outputter.output(kmlDocument, writer);
+			      writer.close();
+			    } catch (IOException e) {
+			      e.printStackTrace();
+			    }
+			  }
+	
+			}
+
